@@ -19,6 +19,24 @@ API.interceptors.request.use(
   }
 )
 
+// Add a response interceptor to handle auth errors
+API.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      // Token expired or invalid
+      console.error('Authentication error, clearing session')
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      // Redirect to login
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
+    }
+    return Promise.reject(error)
+  }
+)
+
 // Auth endpoints
 export const signup = (data: any) => API.post('/api/auth/signup', data)
 export const login = (data: { username: string; password: string }) =>

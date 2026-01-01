@@ -66,6 +66,7 @@ io.on("connection", (socket) => {
     content: string;
     conversationId?: string;
     type?: string;
+    timestamp?: Date;
   }) => {
     try {
       console.log("Message received:", data);
@@ -74,18 +75,20 @@ io.on("connection", (socket) => {
       let conversation;
       if (data.conversationId) {
         conversation = await Conversation.findById(data.conversationId);
-      } else {
+      }
+      
+      if (!conversation) {
         conversation = await Conversation.findOne({
           isGroup: false,
           participants: { $all: [data.from, data.to], $size: 2 }
         });
+      }
 
-        if (!conversation) {
-          conversation = await Conversation.create({
-            participants: [data.from, data.to],
-            isGroup: false
-          });
-        }
+      if (!conversation) {
+        conversation = await Conversation.create({
+          participants: [data.from, data.to],
+          isGroup: false
+        });
       }
 
       // Create message
@@ -104,20 +107,25 @@ io.on("connection", (socket) => {
       const populatedMessage = await Message.findById(message._id)
         .populate("sender", "name username avatar");
 
+      const messageData = {
+        ...populatedMessage!.toObject(),
+        conversationId: conversation._id.toString(),
+        from: data.from,
+        to: data.to,
+      };
+
       // Emit to recipient if online
       const recipientSocketId = userSockets.get(data.to);
       if (recipientSocketId) {
-        io.to(recipientSocketId).emit("receiveMessage", {
-          ...populatedMessage.toObject(),
-          conversationId: conversation._id
-        });
+        io.to(recipientSocketId).emit("receiveMessage", messageData);
+        console.log(`Message sent to recipient ${data.to}`);
+      } else {
+        console.log(`Recipient ${data.to} is offline, message saved for later`);
       }
 
-      // Emit back to sender
-      socket.emit("messageSent", {
-        ...populatedMessage.toObject(),
-        conversationId: conversation._id
-      });
+      // Emit back to sender for confirmation
+      socket.emit("messageSent", messageData);
+      console.log(`Message confirmation sent to sender ${data.from}`);
     } catch (err) {
       console.error("Error sending message:", err);
       socket.emit("messageError", { error: "Failed to send message" });

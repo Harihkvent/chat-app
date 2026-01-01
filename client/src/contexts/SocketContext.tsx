@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { useAuth } from './AuthContext'
 
@@ -13,15 +13,27 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const [socket, setSocket] = useState<Socket | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const { token, user } = useAuth()
+  const socketRef = useRef<Socket | null>(null)
 
   useEffect(() => {
     if (token && user) {
+      // Prevent duplicate connections
+      if (socketRef.current?.connected) {
+        console.log('Socket already connected, reusing existing connection')
+        return
+      }
+
       const socketUrl = import.meta.env.VITE_WS_URL || 'http://localhost:4000'
       const newSocket = io(socketUrl, {
         auth: {
           token,
         },
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionAttempts: 5,
       })
+
+      socketRef.current = newSocket
 
       newSocket.on('connect', () => {
         console.log('🟢 Socket connected:', newSocket.id)
@@ -30,8 +42,8 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         newSocket.emit('userOnline', user.id)
       })
 
-      newSocket.on('disconnect', () => {
-        console.log('🔴 Socket disconnected')
+      newSocket.on('disconnect', (reason) => {
+        console.log('🔴 Socket disconnected:', reason)
         setIsConnected(false)
       })
 
@@ -40,23 +52,32 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         setIsConnected(false)
       })
 
+      newSocket.on('reconnect', (attemptNumber) => {
+        console.log('🔄 Socket reconnected after', attemptNumber, 'attempts')
+        setIsConnected(true)
+        // Re-announce online status
+        newSocket.emit('userOnline', user.id)
+      })
+
       setSocket(newSocket)
 
       return () => {
-        if (newSocket) {
-          newSocket.emit('userOffline', user.id)
-          newSocket.disconnect()
+        if (socketRef.current) {
+          socketRef.current.emit('userOffline', user.id)
+          socketRef.current.disconnect()
+          socketRef.current = null
         }
       }
     } else {
       // Disconnect socket if user logs out
-      if (socket) {
-        socket.disconnect()
+      if (socketRef.current) {
+        socketRef.current.disconnect()
+        socketRef.current = null
         setSocket(null)
         setIsConnected(false)
       }
     }
-  }, [token, user])
+  }, [token, user?.id])
 
   return (
     <SocketContext.Provider value={{ socket, isConnected }}>

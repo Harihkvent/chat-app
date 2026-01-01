@@ -25,6 +25,14 @@ export interface Message {
   timestamp: Date
   read: boolean
   conversationId?: string
+  sender?: {
+    _id: string
+    name: string
+    username?: string
+    avatar?: string
+  }
+  createdAt?: Date
+  updatedAt?: Date
 }
 
 const ChatPage = () => {
