@@ -21,6 +21,9 @@ client/node_modules/
 
 # production
 /build
+/dist
+server/dist/
+client/dist/
 
 # misc
 .DS_Store
@@ -32,8 +35,12 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # vercel
 .vercel
@@ -42,7 +49,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-echo "node_modules/" >> .gitignore
-echo ".env" >> .gitignore       # (Optional, but recommended for secrets)
-echo "dist/" >> .gitignore      # (If you have build folders)
-echo "*.log" >> .gitignore      # (Optional, exclude log files)
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
