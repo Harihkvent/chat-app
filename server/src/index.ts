@@ -4,9 +4,12 @@ import { Server as SocketIOServer } from "socket.io";
 import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
+import path from "path";
 import authRoutes from "./routes/auth";
 import userRoutes from "./routes/users";
 import chatRoutes from "./routes/chats";
+import postRoutes from "./routes/posts";
+import storyRoutes from "./routes/stories";
 import User from "./models/User";
 import Message from "./models/Message";
 import Conversation from "./models/Conversation";
@@ -23,9 +26,15 @@ const io = new SocketIOServer(server, {
 
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
+
+// Serve uploaded files
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/chats", chatRoutes);
+app.use("/api/posts", postRoutes);
+app.use("/api/stories", storyRoutes);
 
 // Store socket connections
 const userSockets = new Map<string, string>(); // userId -> socketId
@@ -96,7 +105,8 @@ io.on("connection", (socket) => {
         conversationId: conversation._id,
         sender: data.from,
         content: data.content,
-        type: data.type || "text"
+        type: data.type || "text",
+        delivered: false
       });
 
       // Update conversation
@@ -114,13 +124,31 @@ io.on("connection", (socket) => {
         to: data.to,
       };
 
-      // Emit to recipient if online
-      const recipientSocketId = userSockets.get(data.to);
-      if (recipientSocketId) {
-        io.to(recipientSocketId).emit("receiveMessage", messageData);
-        console.log(`Message sent to recipient ${data.to}`);
+      // For group chats, send to all participants except sender
+      if (conversation.isGroup) {
+        conversation.participants.forEach((participantId: any) => {
+          if (participantId.toString() !== data.from) {
+            const recipientSocketId = userSockets.get(participantId.toString());
+            if (recipientSocketId) {
+              io.to(recipientSocketId).emit("receiveMessage", messageData);
+            }
+          }
+        });
       } else {
-        console.log(`Recipient ${data.to} is offline, message saved for later`);
+        // Emit to recipient if online
+        const recipientSocketId = userSockets.get(data.to);
+        if (recipientSocketId) {
+          io.to(recipientSocketId).emit("receiveMessage", messageData);
+          
+          // Mark as delivered
+          await Message.findByIdAndUpdate(message._id, {
+            delivered: true,
+            deliveredAt: new Date()
+          });
+          console.log(`Message sent to recipient ${data.to}`);
+        } else {
+          console.log(`Recipient ${data.to} is offline, message saved for later`);
+        }
       }
 
       // Emit back to sender for confirmation
@@ -133,35 +161,78 @@ io.on("connection", (socket) => {
   });
 
   // Typing indicator
-  socket.on("typing", (data: { to: string; isTyping: boolean }) => {
-    const recipientSocketId = userSockets.get(data.to);
-    if (recipientSocketId) {
-      io.to(recipientSocketId).emit("userTyping", {
-        userId: data.to,
-        isTyping: data.isTyping
-      });
-    }
+  socket.on("typing", (data: { conversationId: string; userId: string; isTyping: boolean }) => {
+    const conversation = Conversation.findById(data.conversationId).then((conv) => {
+      if (conv) {
+        // Send typing indicator to all participants except sender
+        conv.participants.forEach((participantId: any) => {
+          if (participantId.toString() !== data.userId) {
+            const recipientSocketId = userSockets.get(participantId.toString());
+            if (recipientSocketId) {
+              io.to(recipientSocketId).emit("userTyping", {
+                conversationId: data.conversationId,
+                userId: data.userId,
+                isTyping: data.isTyping
+              });
+            }
+          }
+        });
+      }
+    });
   });
 
   // Mark message as read
   socket.on("markAsRead", async (data: { messageId: string; userId: string }) => {
     try {
-      const message = await Message.findByIdAndUpdate(
-        data.messageId,
-        { read: true, readAt: new Date() },
-        { new: true }
-      );
-
+      const message = await Message.findById(data.messageId);
+      
       if (message) {
-        // Notify sender
-        const senderSocketId = userSockets.get(message.sender.toString());
-        if (senderSocketId) {
-          io.to(senderSocketId).emit("messageRead", { messageId: data.messageId });
+        // Check if user already read this message
+        const alreadyRead = message.readBy?.some(
+          (r: any) => r.user.toString() === data.userId
+        );
+
+        if (!alreadyRead) {
+          await Message.findByIdAndUpdate(data.messageId, {
+            $push: {
+              readBy: {
+                user: data.userId,
+                readAt: new Date()
+              }
+            }
+          });
+
+          // Notify sender and all participants
+          const conversation = await Conversation.findById(message.conversationId);
+          if (conversation) {
+            conversation.participants.forEach((participantId: any) => {
+              const socketId = userSockets.get(participantId.toString());
+              if (socketId) {
+                io.to(socketId).emit("messageRead", {
+                  messageId: data.messageId,
+                  userId: data.userId,
+                  readAt: new Date()
+                });
+              }
+            });
+          }
         }
       }
     } catch (err) {
       console.error("Error marking message as read:", err);
     }
+  });
+
+  // Join group
+  socket.on("joinGroup", async (data: { conversationId: string; userId: string }) => {
+    socket.join(data.conversationId);
+    console.log(`User ${data.userId} joined group ${data.conversationId}`);
+  });
+
+  // Leave group
+  socket.on("leaveGroup", async (data: { conversationId: string; userId: string }) => {
+    socket.leave(data.conversationId);
+    console.log(`User ${data.userId} left group ${data.conversationId}`);
   });
 
   socket.on("disconnect", async () => {

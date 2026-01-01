@@ -64,5 +64,21 @@ export const createGroup = (data: { name: string; memberIds: string[] }) =>
   API.post('/api/chats/groups', data)
 export const getGroups = () => API.get('/api/chats/groups')
 
+// Helper function to get full image URL
+export const getImageUrl = (imageUrl: string): string => {
+  if (!imageUrl) return ''
+  // If it's already a full URL, return as is
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl
+  }
+  // If it starts with /uploads, prepend the server base URL
+  if (imageUrl.startsWith('/uploads')) {
+    const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+    return `${baseURL}${imageUrl}`
+  }
+  // Otherwise return as is
+  return imageUrl
+}
+
 export default API
 

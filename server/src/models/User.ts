@@ -10,8 +10,16 @@ const userSchema = new mongoose.Schema({
   phone: { type: String },
   googleId: { type: String, unique: true, sparse: true },
   avatar: { type: String },
+  bio: { type: String, maxlength: 150 },
+  website: { type: String },
   isOnline: { type: Boolean, default: false },
-  lastSeen: { type: Date, default: Date.now }
+  lastSeen: { type: Date, default: Date.now },
+  followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+  following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+  followersCount: { type: Number, default: 0 },
+  followingCount: { type: Number, default: 0 },
+  postsCount: { type: Number, default: 0 },
+  isPrivate: { type: Boolean, default: false }
 }, {
   timestamps: true
 });

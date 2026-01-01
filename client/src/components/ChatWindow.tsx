@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import { Contact, Message } from '../pages/ChatPage'
-import { FiSend, FiPaperclip, FiSmile, FiMoreVertical, FiPhone, FiVideo } from 'react-icons/fi'
+import { FiSend, FiPaperclip, FiSmile, FiMoreVertical, FiPhone, FiVideo, FiX, FiFile } from 'react-icons/fi'
 import { format } from 'date-fns'
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react'
 import axios from 'axios'
+import { getImageUrl } from '../lib/api'
 
 interface ChatWindowProps {
   activeContact: Contact | null
@@ -20,8 +21,12 @@ const ChatWindow = ({ activeContact }: ChatWindowProps) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [filePreview, setFilePreview] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!socket) return
@@ -123,34 +128,107 @@ const ChatWindow = ({ activeContact }: ChatWindowProps) => {
     loadMessageHistory()
   }, [activeContact, token])
 
-  const handleSendMessage = () => {
-    if (!message.trim() || !activeContact || !socket) return
+  const handleSendMessage = async () => {
+    if ((!message.trim() && !selectedFile) || !activeContact || !conversationId) return
 
-    const tempTimestamp = new Date()
-    const newMessage: Message = {
-      from: user!.id,
-      to: activeContact._id,
-      content: message,
-      type: 'text',
-      timestamp: tempTimestamp,
-      read: false,
-      conversationId: conversationId || undefined,
+    try {
+      setUploading(true)
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+      
+      if (selectedFile) {
+        // Send file
+        const formData = new FormData()
+        formData.append('file', selectedFile)
+        formData.append('conversationId', conversationId)
+        formData.append('content', message.trim())
+
+        const response = await axios.post(
+          `${API_URL}/api/chats/messages`,
+          formData,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        )
+
+        // Emit to socket for real-time delivery
+        if (socket && socket.connected) {
+          socket.emit('sendMessage', {
+            ...response.data,
+            from: user!.id,
+            to: activeContact._id,
+          })
+        }
+
+        setMessages((prev) => [...prev, response.data])
+        setSelectedFile(null)
+        setFilePreview(null)
+      } else {
+        // Send text message via socket
+        const tempTimestamp = new Date()
+        const newMessage: Message = {
+          from: user!.id,
+          to: activeContact._id,
+          content: message,
+          type: 'text',
+          timestamp: tempTimestamp,
+          read: false,
+          conversationId: conversationId || undefined,
+        }
+
+        // Optimistic update
+        setMessages((prev) => [...prev, newMessage])
+        
+        // Emit to server
+        if (socket) {
+          socket.emit('sendMessage', {
+            ...newMessage,
+            conversationId: conversationId,
+          })
+        }
+      }
+      
+      setMessage('')
+      setShowEmojiPicker(false)
+
+      // Stop typing indicator
+      if (socket) {
+        socket.emit('typing', { to: activeContact._id, isTyping: false })
+      }
+    } catch (error) {
+      console.error('Error sending message:', error)
+      alert('Failed to send message')
+    } finally {
+      setUploading(false)
     }
+  }
 
-    // Optimistic update
-    setMessages((prev) => [...prev, newMessage])
-    
-    // Emit to server
-    socket.emit('sendMessage', {
-      ...newMessage,
-      conversationId: conversationId,
-    })
-    
-    setMessage('')
-    setShowEmojiPicker(false)
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setSelectedFile(file)
+      
+      // Create preview for images
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          setFilePreview(reader.result as string)
+        }
+        reader.readAsDataURL(file)
+      } else {
+        setFilePreview(null)
+      }
+    }
+  }
 
-    // Stop typing indicator
-    socket.emit('typing', { to: activeContact._id, isTyping: false })
+  const handleRemoveFile = () => {
+    setSelectedFile(null)
+    setFilePreview(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
   const handleTyping = (value: string) => {
@@ -281,14 +359,53 @@ const ChatWindow = ({ activeContact }: ChatWindowProps) => {
                 className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-md px-4 py-2 rounded-lg ${
+                  className={`max-w-md rounded-lg ${
                     isOwn
                       ? 'bg-whatsapp-light text-gray-800'
                       : 'bg-white text-gray-800'
-                  } shadow-sm`}
+                  } shadow-sm overflow-hidden`}
                 >
-                  <p className="break-words">{msg.content}</p>
-                  <div className="flex items-center justify-end space-x-1 mt-1">
+                  {/* File content */}
+                  {msg.type === 'image' && msg.fileUrl && (
+                    <img
+                      src={getImageUrl(msg.fileUrl)}
+                      alt="Shared image"
+                      className="max-w-full h-auto cursor-pointer"
+                      onClick={() => msg.fileUrl && window.open(getImageUrl(msg.fileUrl), '_blank')}
+                    />
+                  )}
+                  {msg.type === 'video' && msg.fileUrl && (
+                    <video
+                      src={getImageUrl(msg.fileUrl)}
+                      controls
+                      className="max-w-full h-auto"
+                    />
+                  )}
+                  {msg.type === 'audio' && msg.fileUrl && (
+                    <audio
+                      src={getImageUrl(msg.fileUrl)}
+                      controls
+                      className="w-full"
+                    />
+                  )}
+                  {msg.type === 'file' && msg.fileUrl && (
+                    <a
+                      href={getImageUrl(msg.fileUrl)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center space-x-2 p-3 hover:bg-gray-100 transition"
+                    >
+                      <FiFile size={24} className="text-blue-600" />
+                      <span className="text-sm truncate">{msg.content}</span>
+                    </a>
+                  )}
+                  
+                  {/* Text content */}
+                  {msg.content && msg.type !== 'file' && (
+                    <p className="break-words px-4 py-2">{msg.content}</p>
+                  )}
+                  
+                  <div className="flex items-center justify-end space-x-1 px-4 pb-2">
                     <span className="text-xs text-gray-500">
                       {messageTime ? format(new Date(messageTime), 'HH:mm') : ''}
                     </span>
@@ -308,6 +425,36 @@ const ChatWindow = ({ activeContact }: ChatWindowProps) => {
 
       {/* Message Input */}
       <div className="bg-white border-t border-gray-200 px-4 py-3">
+        {/* File Preview */}
+        {selectedFile && (
+          <div className="mb-3 p-3 bg-gray-50 rounded-lg flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              {filePreview ? (
+                <img src={filePreview} alt="Preview" className="w-16 h-16 object-cover rounded" />
+              ) : (
+                <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center">
+                  <FiFile size={24} className="text-gray-600" />
+                </div>
+              )}
+              <div>
+                <p className="text-sm font-medium text-gray-800 truncate max-w-xs">
+                  {selectedFile.name}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleRemoveFile}
+              className="p-2 hover:bg-gray-200 rounded-full transition"
+              title="Remove file"
+            >
+              <FiX size={20} className="text-gray-600" />
+            </button>
+          </div>
+        )}
+
         <div className="flex items-end space-x-2">
           <div className="relative">
             <button
@@ -323,31 +470,46 @@ const ChatWindow = ({ activeContact }: ChatWindowProps) => {
               </div>
             )}
           </div>
-          <button className="p-2 hover:bg-gray-100 rounded-full transition" title="Attach file">
+          <input
+            ref={fileInputRef}
+            type="file"
+            onChange={handleFileSelect}
+            className="hidden"
+            accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
+            aria-label="Upload file"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="p-2 hover:bg-gray-100 rounded-full transition"
+            title="Attach file"
+          >
             <FiPaperclip size={24} className="text-gray-600" />
           </button>
           <div className="flex-1 relative">
             <textarea
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-whatsapp-green resize-none"
-              placeholder="Type a message..."
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-whatsapp-green resize-none max-h-[120px]"
+              placeholder={selectedFile ? "Add a caption (optional)..." : "Type a message..."}
               value={message}
               onChange={(e) => handleTyping(e.target.value)}
               onKeyPress={handleKeyPress}
               rows={1}
-              style={{ maxHeight: '120px' }}
             />
           </div>
           <button
             onClick={handleSendMessage}
-            disabled={!message.trim()}
+            disabled={(!message.trim() && !selectedFile) || uploading}
             className={`p-3 rounded-full transition ${
-              message.trim()
+              (message.trim() || selectedFile) && !uploading
                 ? 'bg-whatsapp-green text-white hover:bg-whatsapp-teal'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             }`}
             title="Send message"
           >
-            <FiSend size={20} />
+            {uploading ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+            ) : (
+              <FiSend size={20} />
+            )}
           </button>
         </div>
       </div>

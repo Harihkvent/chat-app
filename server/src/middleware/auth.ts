@@ -8,7 +8,10 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
   const authHeader = req.headers['authorization'];
   const token = authHeader?.split(' ')[1];
 
-  if (!token) return res.status(401).json({ error: 'Access Denied' });
+  if (!token) {
+    res.status(401).json({ error: 'Access Denied' });
+    return;
+  }
 
   try {
     const verified = jwt.verify(token, JWT_SECRET);

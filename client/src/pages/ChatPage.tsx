@@ -22,6 +22,7 @@ export interface Message {
   to: string
   content: string
   type: 'text' | 'image' | 'video' | 'audio' | 'file'
+  fileUrl?: string
   timestamp: Date
   read: boolean
   conversationId?: string

@@ -6,8 +6,12 @@ const messageSchema = new mongoose.Schema({
   content: { type: String, required: true },
   type: { type: String, enum: ["text", "image", "video", "audio", "file"], default: "text" },
   fileUrl: { type: String },
-  read: { type: Boolean, default: false },
-  readAt: { type: Date }
+  readBy: [{
+    user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    readAt: { type: Date }
+  }],
+  delivered: { type: Boolean, default: false },
+  deliveredAt: { type: Date }
 }, {
   timestamps: true
 });
