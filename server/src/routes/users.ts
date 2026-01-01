@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import User from "../models/User";
 
@@ -6,9 +6,12 @@ const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "secret";
 
 // Middleware to verify token
-router.use((req, res, next) => {
+router.use((req: Request, res: Response, next: NextFunction) => {
   const token = req.headers.authorization?.split(" ")[1];
-  if (!token) return res.status(401).json({ error: "Unauthorized" });
+  if (!token) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
@@ -20,7 +23,7 @@ router.use((req, res, next) => {
 });
 
 // Get contacts (all users except current user)
-router.get("/contacts", async (req, res) => {
+router.get("/contacts", async (req: Request, res: Response): Promise<void> => {
   const userId = (req as any).userId;
   const users = await User.find(
     { _id: { $ne: userId } },
@@ -30,13 +33,14 @@ router.get("/contacts", async (req, res) => {
 });
 
 // Search users
-router.get("/search", async (req, res) => {
+router.get("/search", async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).userId;
     const query = req.query.q as string;
 
     if (!query || query.length < 2) {
-      return res.json([]);
+      res.json([]);
+      return;
     }
 
     const users = await User.find(
@@ -59,14 +63,15 @@ router.get("/search", async (req, res) => {
 });
 
 // Get single user
-router.get("/:userId", async (req, res) => {
+router.get("/:userId", async (req: Request, res: Response): Promise<void> => {
   try {
     const user = await User.findById(
       req.params.userId,
       "username name email avatar isOnline lastSeen _id"
     );
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      res.status(404).json({ error: "User not found" });
+      return;
     }
     res.json(user);
   } catch (err) {

@@ -28,7 +28,7 @@ export interface Message {
 }
 
 const ChatPage = () => {
-  const { user, logout } = useAuth()
+  const { logout } = useAuth()
   const { isConnected } = useSocket()
   const navigate = useNavigate()
   const [activeContact, setActiveContact] = useState<Contact | null>(null)

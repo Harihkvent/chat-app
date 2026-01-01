@@ -5,7 +5,6 @@ import { Contact } from '../pages/ChatPage'
 import {
   FiSearch,
   FiLogOut,
-  FiUser,
   FiMessageCircle,
   FiSettings,
   FiUsers,

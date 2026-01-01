@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import Message from "../models/Message";
 import Conversation from "../models/Conversation";
@@ -8,9 +8,12 @@ const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "secret";
 
 // Middleware to verify token
-router.use((req, res, next) => {
+router.use((req: Request, res: Response, next: NextFunction) => {
   const token = req.headers.authorization?.split(" ")[1];
-  if (!token) return res.status(401).json({ error: "Unauthorized" });
+  if (!token) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
@@ -22,7 +25,7 @@ router.use((req, res, next) => {
 });
 
 // Get all conversations for current user
-router.get("/conversations", async (req, res) => {
+router.get("/conversations", async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).userId;
     const conversations = await Conversation.find({
@@ -40,13 +43,14 @@ router.get("/conversations", async (req, res) => {
 });
 
 // Get or create conversation with a user
-router.post("/conversations", async (req, res) => {
+router.post("/conversations", async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).userId;
     const { participantId } = req.body;
 
     if (!participantId) {
-      return res.status(400).json({ error: "Participant ID required" });
+      res.status(400).json({ error: "Participant ID required" });
+      return;
     }
 
     // Check if conversation already exists
@@ -72,7 +76,7 @@ router.post("/conversations", async (req, res) => {
 });
 
 // Get messages for a conversation
-router.get("/messages/:conversationId", async (req, res) => {
+router.get("/messages/:conversationId", async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).userId;
     const { conversationId } = req.params;
@@ -84,7 +88,8 @@ router.get("/messages/:conversationId", async (req, res) => {
     });
 
     if (!conversation) {
-      return res.status(403).json({ error: "Not authorized" });
+      res.status(403).json({ error: "Not authorized" });
+      return;
     }
 
     const messages = await Message.find({ conversationId })
@@ -100,13 +105,14 @@ router.get("/messages/:conversationId", async (req, res) => {
 });
 
 // Send a message
-router.post("/messages", async (req, res) => {
+router.post("/messages", async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).userId;
     const { conversationId, content, type = "text" } = req.body;
 
     if (!conversationId || !content) {
-      return res.status(400).json({ error: "Missing required fields" });
+      res.status(400).json({ error: "Missing required fields" });
+      return;
     }
 
     // Verify user is part of conversation
@@ -116,7 +122,8 @@ router.post("/messages", async (req, res) => {
     });
 
     if (!conversation) {
-      return res.status(403).json({ error: "Not authorized" });
+      res.status(403).json({ error: "Not authorized" });
+      return;
     }
 
     // Create message
@@ -143,13 +150,14 @@ router.post("/messages", async (req, res) => {
 });
 
 // Create group chat
-router.post("/groups", async (req, res) => {
+router.post("/groups", async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).userId;
     const { name, memberIds } = req.body;
 
     if (!name || !memberIds || memberIds.length < 2) {
-      return res.status(400).json({ error: "Invalid group data" });
+      res.status(400).json({ error: "Invalid group data" });
+      return;
     }
 
     // Add creator to members
