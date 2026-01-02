@@ -1,338 +1,606 @@
-# Chat App - Real-time Messaging Application
+# Chat App - Full-Stack Social Media & Messaging Platform
 
-A modern, real-time chat application built with React (Vite), Node.js, Socket.io, and MongoDB. Features include Google Sign-in, one-on-one messaging, group chats, typing indicators, read receipts, and more - combining the best features of WhatsApp and Instagram.
+A modern, feature-rich social media and real-time messaging application built with React (Vite), Node.js, Socket.io, and MongoDB. Combines the best features of WhatsApp, Instagram, and modern social platforms - including messaging, posts, stories, profiles, and social interactions.
 
 ## ✨ Features
 
-### Authentication
-- 🔐 Google OAuth Sign-in
-- 📝 Traditional username/password signup
-- 🔑 JWT-based authentication
-- 🎨 Beautiful gradient login/signup pages
+### 🔐 Authentication & Security
+- Google OAuth 2.0 Sign-in
+- Traditional email/password signup and login
+- JWT-based authentication with secure tokens
+- Protected routes and middleware
+- Password hashing with bcryptjs
 
-### Real-time Messaging
-- 💬 One-on-one chat
-- 👥 Group chats
-- ⚡ Real-time message delivery via Socket.io
-- ✓✓ Read receipts
-- 💭 Typing indicators
-- 🟢 Online/offline status
-- ⏰ Message timestamps
+### 💬 Real-time Messaging (WhatsApp-Inspired)
+- One-on-one chat with instant delivery
+- Group chats with multiple participants
+- Group admin controls (add/remove members, promote admins)
+- Real-time message delivery via Socket.io
+- WhatsApp-style read receipts (✓ sent, ✓✓ read)
+- Typing indicators
+- Online/offline status with real-time updates
+- Message timestamps
+- File/image sharing in chats
+- Message history with conversation persistence
 
-### UI/UX (WhatsApp + Instagram inspired)
-- 📱 Responsive design (mobile & desktop)
-- 🎨 Modern, clean interface
-- 😊 Emoji picker
-- 🔍 User search functionality
-- 💚 WhatsApp-inspired chat interface
-- 💜 Instagram-inspired color gradients
-- 🎯 Smooth animations
+### 📱 Social Feed (Instagram-Inspired)
+- Personalized feed showing posts from followed users
+- Create posts with images and captions
+- Like/unlike posts with real-time updates
+- Comment on posts
+- Post engagement metrics (likes, comments count)
+- Delete own posts
+- User profile with post grid
+- Story rings display (coming soon)
+
+### 👥 User Profiles & Social Features
+- Customizable user profiles
+- Bio, website, and avatar support
+- Follow/unfollow system
+- Followers and following lists
+- User search functionality
+- View other users' profiles
+- Post count, followers, and following statistics
+- Private account support
+
+### 📖 Stories (24-hour ephemeral content)
+- Create stories with images/videos
+- Automatic expiration after 24 hours
+- View stories from followed users
+- Story viewer tracking
+- Grouped by user with story rings
+
+### 🎨 UI/UX Design
+- Responsive design (mobile, tablet, desktop)
+- WhatsApp-inspired green chat interface
+- Instagram-inspired gradient backgrounds
+- Modern, clean component design
+- Smooth animations and transitions
+- Emoji picker integration
+- Lucide React icons throughout
+- Tailwind CSS styling
 
 ## 🛠️ Tech Stack
 
 ### Frontend
-- ⚛️ React 18 with TypeScript
-- ⚡ Vite (fast build tool)
-- 🎨 Tailwind CSS
-- 🔌 Socket.io-client (real-time)
-- 🗺️ React Router v6
-- 🔐 @react-oauth/google
-- 😊 emoji-picker-react
-- 📅 date-fns
+- **React 18** with TypeScript
+- **Vite** - Lightning-fast build tool
+- **Tailwind CSS** - Utility-first styling
+- **Socket.io-client** - Real-time communication
+- **React Router v6** - Client-side routing
+- **@react-oauth/google** - Google authentication
+- **emoji-picker-react** - Emoji support
+- **date-fns** - Date formatting
+- **Axios** - HTTP client
+- **Lucide React** - Modern icon library
+- **jwt-decode** - JWT token parsing
 
 ### Backend
-- 🟢 Node.js with TypeScript
-- 🚂 Express.js 5
-- 🔌 Socket.io (real-time)
-- 🗄️ MongoDB with Mongoose
-- 🔑 JWT authentication
-- 🔒 bcryptjs for password hashing
+- **Node.js** with TypeScript
+- **Express.js 5** - Web framework
+- **Socket.io** - WebSocket server
+- **MongoDB** with Mongoose - Database
+- **JWT** - Token-based authentication
+- **bcryptjs** - Password hashing
+- **Multer** - File upload handling
+- **CORS** - Cross-origin resource sharing
+
+### Development Tools
+- **TypeScript** - Type safety
+- **ESLint** - Code linting
+- **ts-node-dev** - Development server
+- **Docker Compose** - MongoDB containerization
 
 ## 📋 Prerequisites
 
-Before you begin, ensure you have the following installed:
-- Node.js 18.x or higher
-- MongoDB (local or Atlas)
-- npm or yarn
-- Google OAuth credentials (for Google Sign-in)
+Before you begin, ensure you have installed:
+- **Node.js** 18.x or higher
+- **MongoDB** (local installation or Atlas cloud)
+- **npm** or **yarn**
+- **Google OAuth credentials** (optional, for Google Sign-in)
 
-## 🚀 Installation
+## 🚀 Quick Start
 
-### 1. Clone the repository
+### 1. Clone the Repository
 ```bash
 git clone https://github.com/Harihkvent/chat-app.git
 cd chat-app
 ```
 
-### 2. Set up MongoDB
+### 2. MongoDB Setup
 
-**Option A: Local MongoDB**
+**Option A: Using Docker (Recommended)**
 ```bash
-# Install MongoDB locally and start it
+docker-compose up -d
+```
+This starts MongoDB on `localhost:27017` with default credentials.
+
+**Option B: Local MongoDB**
+```bash
+# Install and start MongoDB locally
 mongod
 ```
 
-**Option B: MongoDB Atlas (Cloud)**
-- Create a free account at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
-- Create a cluster
-- Get your connection string
+**Option C: MongoDB Atlas (Cloud)**
+1. Create a free account at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+2. Create a cluster and get your connection string
+3. Whitelist your IP address
 
-### 3. Set up Google OAuth
+### 3. Google OAuth Setup (Optional)
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select an existing one
+1. Visit [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project
 3. Enable Google+ API
 4. Create OAuth 2.0 credentials (Web application)
 5. Add authorized JavaScript origins:
-   - `http://localhost:3000`
    - `http://localhost:5173` (Vite dev server)
-6. Copy the Client ID
+   - `http://localhost:3000`
+6. Copy the Client ID for environment variables
 
-### 4. Configure Environment Variables
+### 4. Environment Variables
 
-**Backend (.env)**
-```bash
-cd server
-cp .env.example .env
-```
+**Backend Configuration**
 
-Edit `server/.env`:
+Create `server/.env`:
 ```env
 PORT=4000
-MONGO_URI=mongodb://localhost:27017/chatapp  # or your MongoDB Atlas URI
+MONGO_URI=mongodb://localhost:27017/chatapp
+# For Docker: mongodb://root:example@localhost:27017/chatapp?authSource=admin
+# For Atlas: your_mongodb_atlas_connection_string
+
 JWT_SECRET=your_super_secret_jwt_key_change_this_in_production
-GOOGLE_CLIENT_ID=your_google_client_id_here  # optional
+GOOGLE_CLIENT_ID=your_google_client_id_here  # Optional
 ```
 
-**Frontend (.env)**
-```bash
-cd client
-cp .env.example .env
-```
+**Frontend Configuration**
 
-Edit `client/.env`:
+Create `client/.env`:
 ```env
 VITE_API_URL=http://localhost:4000
 VITE_WS_URL=http://localhost:4000
-VITE_GOOGLE_CLIENT_ID=your_google_client_id_here
+VITE_GOOGLE_CLIENT_ID=your_google_client_id_here  # Optional
 ```
 
-### 5. Install Dependencies
+### 5. Install Dependencies & Run
 
-**Backend**
+**Install all dependencies:**
 ```bash
+# Backend
 cd server
+npm install
+
+# Frontend (in a new terminal)
+cd client
 npm install
 ```
 
-**Frontend**
+**Start the application:**
 ```bash
-cd client
-npm install
-```
-
-## 🏃 Running the Application
-
-### Development Mode
-
-**Terminal 1: Start MongoDB** (if running locally)
-```bash
-mongod
-```
-
-**Terminal 2: Start Backend Server**
-```bash
+# Terminal 1: Start Backend Server
 cd server
 npm run dev
-```
-Server will run on `http://localhost:4000`
+# Server runs on http://localhost:4000
 
-**Terminal 3: Start Frontend**
-```bash
+# Terminal 2: Start Frontend
 cd client
 npm run dev
-```
-Frontend will run on `http://localhost:3000`
-
-### Production Mode
-
-**Build Backend**
-```bash
-cd server
-npm run build
-npm start
+# Frontend runs on http://localhost:5173
 ```
 
-**Build Frontend**
-```bash
-cd client
-npm run build
-npm run preview
-```
+The application should now be running at `http://localhost:5173` 🎉
 
-## 📱 Usage
+## 📱 Using the Application
 
-1. **Sign Up**
-   - Click "Sign Up" on the login page
-   - Fill in your details or use Google Sign-in
-   - You'll be automatically logged in
+### Authentication
+1. **Sign Up**: Create account with username, email, and password
+2. **Login**: Use credentials or Google Sign-in
+3. Auto-redirect to feed page after authentication
 
-2. **Log In**
-   - Use your credentials or Google Sign-in
-   - You'll be redirected to the chat page
+### Feed & Social Features
+1. **View Feed**: Home icon in navigation shows posts from followed users
+2. **Create Post**: 
+   - Click the **+** (Plus) icon in navigation
+   - Upload image or provide image URL
+   - Add caption and share
+3. **Like Posts**: Click heart icon to like/unlike
+4. **Comment**: Click comment icon to add comments
+5. **View Profiles**: Click on usernames to view profiles
 
-3. **Start Chatting**
-   - Search for users in the search bar
-   - Click on a user to start chatting
-   - Type your message and press Enter or click Send
-   - Use the emoji picker for emojis
-   - See real-time typing indicators
+### Messaging
+1. **Start Chat**: 
+   - Click message icon in navigation
+   - Search for users
+   - Click on a user to start conversation
+2. **Send Messages**: Type and press Enter or click Send
+3. **Group Chats**: Create groups with multiple participants
+4. **Real-time Features**:
+   - See typing indicators
    - View online/offline status
+   - Get read receipts (✓✓)
 
-4. **Features to Try**
-   - Send messages to multiple users
-   - See real-time message delivery
-   - Check read receipts (✓✓)
-   - Notice typing indicators
-   - Search for new users to chat with
+### User Profile
+1. **View Your Profile**: Click profile icon
+2. **Edit Profile**: Update bio, avatar, website
+3. **Follow Users**: Visit profiles and click Follow
+4. **View Stats**: See followers, following, and post counts
+
+### Stories (Coming Soon)
+- Create 24-hour ephemeral stories
+- View stories from followed users
+- Story rings display at top of feed
 
 ## 🏗️ Project Structure
 
 ```
 chat-app/
-├── client/                 # React frontend
+├── client/                         # React frontend application
+│   ├── public/                     # Static assets
 │   ├── src/
-│   │   ├── components/     # Reusable UI components
-│   │   ├── contexts/       # React contexts (Auth, Socket)
-│   │   ├── lib/           # API and utility functions
-│   │   ├── pages/         # Main pages (Login, Signup, Chat)
-│   │   ├── styles/        # Global styles
-│   │   ├── App.tsx        # Main App component
-│   │   └── main.tsx       # Entry point
+│   │   ├── components/             # Reusable UI components
+│   │   │   ├── ChatSidebar.tsx     # Chat conversation list
+│   │   │   ├── ChatWindow.tsx      # Chat message interface
+│   │   │   ├── CreateGroupModal.tsx # Group creation
+│   │   │   ├── CreatePostModal.tsx  # Post creation modal
+│   │   │   ├── Navigation.tsx      # Global navigation bar
+│   │   │   └── ProtectedRoute.tsx  # Auth route guard
+│   │   ├── contexts/               # React context providers
+│   │   │   ├── AuthContext.tsx     # Authentication state
+│   │   │   └── SocketContext.tsx   # Socket.io connection
+│   │   ├── lib/
+│   │   │   └── api.ts              # Axios API client
+│   │   ├── pages/                  # Main application pages
+│   │   │   ├── ChatPage.tsx        # Messaging interface
+│   │   │   ├── FeedPage.tsx        # Social feed
+│   │   │   ├── LoginPage.tsx       # Login UI
+│   │   │   ├── ProfilePage.tsx     # User profiles
+│   │   │   └── SignupPage.tsx      # Registration UI
+│   │   ├── styles/
+│   │   │   └── index.css           # Global styles
+│   │   ├── App.tsx                 # Main app component
+│   │   └── main.tsx                # Application entry
 │   ├── index.html
-│   ├── vite.config.ts
+│   ├── vite.config.ts              # Vite configuration
+│   ├── tailwind.config.js          # Tailwind CSS config
 │   └── package.json
 │
-├── server/                # Node.js backend
+├── server/                         # Node.js backend application
 │   ├── src/
-│   │   ├── models/        # MongoDB models
-│   │   ├── routes/        # API routes
-│   │   ├── middleware/    # Custom middleware
-│   │   └── index.ts       # Server entry point
+│   │   ├── middleware/
+│   │   │   └── auth.ts             # JWT authentication
+│   │   ├── models/                 # MongoDB schemas
+│   │   │   ├── Comment.ts          # Post comments
+│   │   │   ├── Conversation.ts     # Chat conversations
+│   │   │   ├── Message.ts          # Chat messages
+│   │   │   ├── Post.ts             # Social posts
+│   │   │   ├── Story.ts            # 24hr stories
+│   │   │   └── User.ts             # User accounts
+│   │   ├── routes/                 # API endpoints
+│   │   │   ├── auth.ts             # Auth routes
+│   │   │   ├── chats.ts            # Messaging routes
+│   │   │   ├── posts.ts            # Post routes
+│   │   │   ├── stories.ts          # Story routes
+│   │   │   └── users.ts            # User routes
+│   │   └── index.ts                # Server entry & Socket.io
+│   ├── uploads/                    # File uploads directory
+│   │   └── chats/                  # Chat media
 │   ├── tsconfig.json
 │   └── package.json
 │
+├── docs/                           # Documentation
+│   ├── COMPLETION_SUMMARY.md
+│   ├── FEATURES.md
+│   ├── IMPLEMENTATION_SUMMARY.md
+│   ├── NEW_FEATURES.md
+│   ├── QUICK_START.md
+│   ├── SETUP_GUIDE.md
+│   └── TESTING_CHECKLIST.md
+│
+├── docker-compose.yml              # MongoDB container
+├── client_secret_*.json            # Google OAuth credentials
 └── README.md
 ```
 
-## 🔌 API Endpoints
+## 🔌 API Documentation
 
-### Authentication
-- `POST /api/auth/signup` - Register new user
-- `POST /api/auth/login` - Login user
-- `POST /api/auth/google` - Google OAuth login
+### Authentication Endpoints
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/api/auth/signup` | Register new user | No |
+| POST | `/api/auth/login` | Login user | No |
+| POST | `/api/auth/google` | Google OAuth login | No |
 
-### Users
-- `GET /api/users/contacts` - Get all users (contacts)
-- `GET /api/users/search?q=query` - Search users
-- `GET /api/users/:userId` - Get user details
+### User Endpoints
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/users/contacts` | Get all users (contacts) | Yes |
+| GET | `/api/users/search?q=query` | Search users | Yes |
+| GET | `/api/users/:userId` | Get user profile | Yes |
+| POST | `/api/users/:id/follow` | Follow user | Yes |
+| DELETE | `/api/users/:id/follow` | Unfollow user | Yes |
+| GET | `/api/users/:id/followers` | Get followers list | Yes |
+| GET | `/api/users/:id/following` | Get following list | Yes |
 
-### Chats
-- `GET /api/chats/conversations` - Get user's conversations
-- `POST /api/chats/conversations` - Create/get conversation
-- `GET /api/chats/messages/:conversationId` - Get messages
-- `POST /api/chats/messages` - Send message
-- `POST /api/chats/groups` - Create group chat
+### Chat Endpoints
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/chats/conversations` | Get user's conversations | Yes |
+| POST | `/api/chats/conversations` | Create/get conversation | Yes |
+| GET | `/api/chats/messages/:conversationId` | Get messages | Yes |
+| POST | `/api/chats/messages` | Send message | Yes |
+| POST | `/api/chats/groups` | Create group chat | Yes |
+| POST | `/api/chats/groups/:id/members` | Add members to group | Yes |
+| DELETE | `/api/chats/groups/:id/members/:memberId` | Remove member | Yes |
+| POST | `/api/chats/groups/:id/admins/:memberId` | Make member admin | Yes |
+| PATCH | `/api/chats/groups/:id` | Update group info | Yes |
+
+### Post Endpoints
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/posts/feed` | Get personalized feed | Yes |
+| GET | `/api/posts/user/:userId` | Get user's posts | Yes |
+| POST | `/api/posts` | Create new post | Yes |
+| POST | `/api/posts/:postId/like` | Like/unlike post | Yes |
+| GET | `/api/posts/:postId/comments` | Get comments | Yes |
+| POST | `/api/posts/:postId/comments` | Add comment | Yes |
+| DELETE | `/api/posts/:postId` | Delete post | Yes |
+
+### Story Endpoints
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/stories` | Get stories from followed users | Yes |
+| GET | `/api/stories/my-stories` | Get own stories | Yes |
+| POST | `/api/stories` | Create story | Yes |
+| POST | `/api/stories/:id/view` | Mark story as viewed | Yes |
+| GET | `/api/stories/:id/viewers` | Get story viewers | Yes |
+| DELETE | `/api/stories/:id` | Delete story | Yes |
 
 ### WebSocket Events
 
-**Client → Server**
+**Client → Server Events:**
 - `userOnline` - User comes online
-- `userOffline` - User goes offline
-- `sendMessage` - Send a message
-- `typing` - Typing indicator
+- `userOffline` - User goes offline  
+- `sendMessage` - Send a chat message
+- `typing` - User is typing
+- `stopTyping` - User stopped typing
 - `markAsRead` - Mark message as read
+- `joinRoom` - Join conversation room
 
-**Server → Client**
+**Server → Client Events:**
 - `receiveMessage` - Receive new message
-- `messageSent` - Confirmation of sent message
-- `userStatusChange` - User online/offline status
-- `userTyping` - Someone is typing
-- `messageRead` - Message was read
+- `messageSent` - Message sent confirmation
+- `userStatusChange` - User online/offline status change
+- `userTyping` - User typing indicator
+- `messageRead` - Message read receipt
+- `messageDelivered` - Message delivered status
 
-## 🧪 Testing
+## 🧪 Testing the Application
 
-The application can be tested by:
+### Manual Testing
+1. **Multiple Users**: Open the app in multiple browsers/incognito windows
+2. **Create Accounts**: Register different users
+3. **Test Features**:
+   - Send messages between users
+   - Create posts and verify they appear in feeds
+   - Follow/unfollow users
+   - Like and comment on posts
+   - Create groups and add members
+   - Test real-time features (typing, status, read receipts)
 
-1. Opening multiple browser windows
-2. Creating different user accounts
-3. Sending messages between them
-4. Observing real-time updates
+### Test Scenarios
+- ✅ User registration and login
+- ✅ Google OAuth authentication
+- ✅ One-on-one messaging
+- ✅ Group chat creation and management
+- ✅ Real-time message delivery
+- ✅ Read receipts and typing indicators
+- ✅ Post creation and viewing
+- ✅ Like/unlike functionality
+- ✅ Comment system
+- ✅ Follow/unfollow system
+- ✅ Profile viewing and editing
+- ✅ User search
+
+For a complete testing checklist, see [docs/TESTING_CHECKLIST.md](docs/TESTING_CHECKLIST.md)
 
 ## 🐛 Troubleshooting
 
 ### MongoDB Connection Issues
-- Ensure MongoDB is running: `mongod`
-- Check your `MONGO_URI` in `.env`
-- For Atlas, check network access and IP whitelist
+**Problem**: Cannot connect to MongoDB  
+**Solutions**:
+- Ensure MongoDB is running: `mongod` or `docker-compose up -d`
+- Check `MONGO_URI` in `server/.env` is correct
+- For Docker: Use `mongodb://root:example@localhost:27017/chatapp?authSource=admin`
+- For Atlas: Verify IP whitelist and connection string
+- Check MongoDB service status
 
 ### Google Sign-in Not Working
-- Verify `VITE_GOOGLE_CLIENT_ID` is set correctly
-- Check authorized JavaScript origins in Google Console
-- Ensure you're using `http://localhost:3000` (not 127.0.0.1)
+**Problem**: Google authentication fails  
+**Solutions**:
+- Verify `VITE_GOOGLE_CLIENT_ID` in `client/.env` matches your Google Console Client ID
+- Check authorized JavaScript origins in Google Cloud Console
+- Ensure using `http://localhost:5173` (not `127.0.0.1`)
+- Clear browser cache and cookies
+- Check browser console for errors
 
 ### Socket Connection Issues
-- Ensure both frontend and backend are running
-- Check `VITE_WS_URL` matches backend URL
-- Check browser console for CORS errors
+**Problem**: Real-time features not working  
+**Solutions**:
+- Ensure both frontend and backend servers are running
+- Verify `VITE_WS_URL` matches backend server URL
+- Check browser console for WebSocket errors
+- Verify CORS configuration in backend
+- Check firewall settings
 
 ### Port Already in Use
+**Problem**: Port 4000 or 5173 already in use  
+**Solutions**:
+
+**Windows:**
+```powershell
+# Find process using port 4000
+netstat -ano | findstr :4000
+# Kill process (replace PID with actual process ID)
+taskkill /PID <PID> /F
+
+# Find process using port 5173
+netstat -ano | findstr :5173
+taskkill /PID <PID> /F
+```
+
+**Linux/Mac:**
 ```bash
-# Kill process on port 4000 (backend)
+# Kill process on port 4000
 lsof -ti:4000 | xargs kill -9
 
-# Kill process on port 3000 (frontend)
-lsof -ti:3000 | xargs kill -9
+# Kill process on port 5173
+lsof -ti:5173 | xargs kill -9
 ```
+
+### Build Errors
+**Problem**: npm install or build fails  
+**Solutions**:
+- Delete `node_modules` and `package-lock.json`
+- Run `npm install` again
+- Ensure Node.js version is 18.x or higher: `node --version`
+- Clear npm cache: `npm cache clean --force`
+- Try using `npm ci` instead of `npm install`
+
+### File Upload Issues
+**Problem**: Image uploads not working  
+**Solutions**:
+- Check `uploads/` directory exists and has write permissions
+- Verify file size limits in multer configuration
+- Check allowed file types (jpeg, jpg, png, gif, webp)
+- Ensure correct Content-Type headers
 
 ## 🚀 Deployment
 
-### Backend (Railway, Render, Heroku)
-1. Build: `npm run build`
-2. Start: `npm start`
-3. Set environment variables
-4. Ensure MongoDB is accessible
+### Backend Deployment (Railway, Render, Heroku)
 
-### Frontend (Vercel, Netlify)
-1. Build: `npm run build`
-2. Serve `dist` folder
-3. Set environment variables
-4. Update API URLs to production backend
+1. **Prepare Backend**:
+   ```bash
+   cd server
+   npm run build
+   ```
+
+2. **Set Environment Variables** on your hosting platform:
+   - `MONGO_URI` - MongoDB connection string
+   - `JWT_SECRET` - Secret key for JWT
+   - `PORT` - Port number (usually auto-set)
+   - `GOOGLE_CLIENT_ID` - Optional
+
+3. **Deploy**:
+   - Start command: `npm start`
+   - Build command: `npm run build`
+
+### Frontend Deployment (Vercel, Netlify)
+
+1. **Build Frontend**:
+   ```bash
+   cd client
+   npm run build
+   ```
+
+2. **Set Environment Variables**:
+   - `VITE_API_URL` - Your backend API URL
+   - `VITE_WS_URL` - Your backend WebSocket URL
+   - `VITE_GOOGLE_CLIENT_ID` - Optional
+
+3. **Deploy**:
+   - Deploy the `dist/` folder
+   - Configure build command: `npm run build`
+   - Configure output directory: `dist`
+
+### Important Deployment Notes
+- Update CORS settings in backend for your frontend domain
+- Update Google OAuth authorized origins with production URLs
+- Use production MongoDB instance (Atlas recommended)
+- Enable HTTPS for production
+- Set appropriate JWT_SECRET (strong, random string)
+
+## 📚 Additional Documentation
+
+For more detailed information, check out:
+- [Quick Start Guide](docs/QUICK_START.md) - Get started quickly
+- [Features Documentation](docs/FEATURES.md) - Detailed feature descriptions
+- [Setup Guide](docs/SETUP_GUIDE.md) - Comprehensive setup instructions
+- [Implementation Summary](docs/IMPLEMENTATION_SUMMARY.md) - Technical implementation details
+- [Testing Checklist](docs/TESTING_CHECKLIST.md) - Complete testing scenarios
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+Contributions are welcome! Here's how you can help:
+
+1. **Fork the Repository**
+2. **Create a Feature Branch**
+   ```bash
+   git checkout -b feature/AmazingFeature
+   ```
+3. **Commit Your Changes**
+   ```bash
+   git commit -m 'Add some AmazingFeature'
+   ```
+4. **Push to Branch**
+   ```bash
+   git push origin feature/AmazingFeature
+   ```
+5. **Open a Pull Request**
+
+### Contribution Guidelines
+- Follow existing code style and patterns
+- Write clear commit messages
+- Test your changes thoroughly
+- Update documentation as needed
+- Keep pull requests focused on a single feature/fix
 
 ## 📝 License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 👥 Author
+## 👨‍💻 Author
 
-Created with ❤️ by Harihkvent
+**Harihkvent**
+- GitHub: [@Harihkvent](https://github.com/Harihkvent)
 
 ## 🙏 Acknowledgments
 
-- Socket.io for real-time functionality
-- React team for the amazing library
-- Vite for the blazing fast build tool
-- MongoDB for the flexible database
-- Google for OAuth integration
+- **Socket.io** - Real-time bidirectional event-based communication
+- **React Team** - Amazing frontend library
+- **Vite** - Lightning-fast build tool
+- **MongoDB** - Flexible NoSQL database
+- **Tailwind CSS** - Utility-first CSS framework
+- **Google** - OAuth 2.0 authentication
+- **Lucide** - Beautiful icon library
+
+## 🌟 Features Roadmap
+
+### Coming Soon
+- [ ] Video/audio calling
+- [ ] Message reactions (emoji reactions)
+- [ ] Message forwarding
+- [ ] Voice messages
+- [ ] Story creation UI
+- [ ] Story viewer modal
+- [ ] Advanced search filters
+- [ ] Notifications system
+- [ ] Dark mode
+- [ ] Message encryption
+- [ ] GIF support
+- [ ] Message editing and deletion
+- [ ] Profile verification badges
+- [ ] Trending posts
+- [ ] Hashtag system
+
+## 📊 Statistics
+
+- **Total Lines of Code**: ~10,000+
+- **Components**: 10+
+- **API Endpoints**: 30+
+- **WebSocket Events**: 12+
+- **Database Models**: 6
 
 ---
 
-**Happy Chatting! 💬**
+**Made with ❤️ by Harihkvent**
+
+**Happy Chatting & Sharing! 💬 📸**
