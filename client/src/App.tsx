@@ -6,6 +6,7 @@ import SignupPage from './pages/SignupPage'
 import ChatPage from './pages/ChatPage'
 import FeedPage from './pages/FeedPage'
 import ProfilePage from './pages/ProfilePage'
+import SettingsPage from './pages/SettingsPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import Navigation from './components/Navigation'
 
@@ -50,6 +51,15 @@ function App() {
                 <ProtectedRoute>
                   <Navigation />
                   <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Navigation />
+                  <SettingsPage />
                 </ProtectedRoute>
               }
             />

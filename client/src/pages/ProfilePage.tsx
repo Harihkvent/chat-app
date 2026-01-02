@@ -35,7 +35,8 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"posts" | "saved">("posts");
 
-  const isOwnProfile = !userId || userId === currentUser?._id;
+  const currentUserId = currentUser?._id || (currentUser as any)?.id;
+  const isOwnProfile = !userId || userId === currentUserId;
 
   useEffect(() => {
     // Wait for auth to finish loading
@@ -44,7 +45,7 @@ export default function ProfilePage() {
     }
     
     // Don't load if accessing own profile but user data not ready
-    if (isOwnProfile && !currentUser) {
+    if (isOwnProfile && !currentUserId) {
       setLoading(false);
       return;
     }
@@ -55,7 +56,7 @@ export default function ProfilePage() {
 
   const loadProfile = async () => {
     try {
-      const targetId = userId || currentUser?._id;
+      const targetId = userId || currentUserId;
       if (!targetId) {
         console.error('No userId available');
         return;
@@ -71,7 +72,7 @@ export default function ProfilePage() {
 
   const loadPosts = async () => {
     try {
-      const targetId = userId || currentUser?._id;
+      const targetId = userId || currentUserId;
       if (!targetId) {
         console.error('No userId available for loading posts');
         return;
