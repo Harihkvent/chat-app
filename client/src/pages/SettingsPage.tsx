@@ -183,17 +183,19 @@ export default function SettingsPage() {
 
             {/* Private Account */}
             <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="isPrivate"
-                checked={formData.isPrivate}
-                onChange={(e) =>
-                  setFormData({ ...formData, isPrivate: e.target.checked })
-                }
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="isPrivate" className="ml-2 block text-sm text-gray-700 cursor-pointer">
-                Private Account
+              <label htmlFor="isPrivate" className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="isPrivate"
+                  checked={formData.isPrivate}
+                  onChange={(e) =>
+                    setFormData({ ...formData, isPrivate: e.target.checked })
+                  }
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <span className="ml-2 block text-sm text-gray-700">
+                  Private Account
+                </span>
               </label>
             </div>
 
