@@ -3,6 +3,8 @@
 # dependencies
 server/node_modules/
 client/node_modules/
+server/package-lock.json
+client/package-lock.json
 /node_modules
 /.pnp
 .pnp.*

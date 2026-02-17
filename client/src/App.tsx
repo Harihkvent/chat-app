@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { SocketProvider } from './contexts/SocketContext'
+import { CallProvider } from './contexts/CallContext'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import ChatPage from './pages/ChatPage'
@@ -9,13 +10,16 @@ import ProfilePage from './pages/ProfilePage'
 import SettingsPage from './pages/SettingsPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import Navigation from './components/Navigation'
+import CallModal from './components/CallModal'
 
 function App() {
   return (
     <Router>
       <AuthProvider>
         <SocketProvider>
-          <Routes>
+          <CallProvider>
+            <CallModal />
+            <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route
@@ -65,6 +69,7 @@ function App() {
             />
             <Route path="/" element={<Navigate to="/feed" replace />} />
           </Routes>
+          </CallProvider>
         </SocketProvider>
       </AuthProvider>
     </Router>

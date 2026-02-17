@@ -5,8 +5,14 @@ import { useAuth } from './AuthContext'
 export type CallStatus = 'idle' | 'outgoing' | 'incoming' | 'active'
 export type CallType = 'audio' | 'video'
 
-interface CallPeer {
+export interface CallPeer {
   id: string
+  name: string
+  avatar?: string
+}
+
+export interface RemotePeerStream {
+  stream: MediaStream
   name: string
   avatar?: string
 }
@@ -14,14 +20,15 @@ interface CallPeer {
 interface CallContextType {
   callStatus: CallStatus
   callType: CallType
-  remotePeer: CallPeer | null
+  callInfo: { roomId: string; callerName: string; callerAvatar?: string; groupName?: string } | null
   localStream: MediaStream | null
-  remoteStream: MediaStream | null
+  remoteStreams: Map<string, RemotePeerStream>
   isMuted: boolean
   isCameraOff: boolean
   callDuration: number
-  startCall: (peer: CallPeer, type: CallType) => Promise<void>
-  acceptCall: () => Promise<void>
+  participantCount: number
+  startCall: (participants: CallPeer[], type: CallType, groupName?: string) => void
+  acceptCall: () => void
   rejectCall: () => void
   endCall: () => void
   toggleMute: () => void
@@ -43,30 +50,44 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
 
   const [callStatus, setCallStatus] = useState<CallStatus>('idle')
   const [callType, setCallType] = useState<CallType>('audio')
-  const [remotePeer, setRemotePeer] = useState<CallPeer | null>(null)
+  const [callInfo, setCallInfo] = useState<{
+    roomId: string; callerName: string; callerAvatar?: string; groupName?: string
+  } | null>(null)
   const [localStream, setLocalStream] = useState<MediaStream | null>(null)
-  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
+  const [remoteStreams, setRemoteStreams] = useState<Map<string, RemotePeerStream>>(new Map())
   const [isMuted, setIsMuted] = useState(false)
   const [isCameraOff, setIsCameraOff] = useState(false)
   const [callDuration, setCallDuration] = useState(0)
+  const [participantCount, setParticipantCount] = useState(0)
 
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
+  // Refs for stable access inside callbacks
+  const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map())
+  const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map())
   const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([])
-  const incomingOfferRef = useRef<RTCSessionDescriptionInit | null>(null)
+  const roomIdRef = useRef<string | null>(null)
+  const localStreamRef = useRef<MediaStream | null>(null)
+  const callTypeRef = useRef<CallType>('audio')
+  const callStatusRef = useRef<CallStatus>('idle')
+
+  // Keep refs in sync with state
+  useEffect(() => { localStreamRef.current = localStream }, [localStream])
+  useEffect(() => { callTypeRef.current = callType }, [callType])
+  useEffect(() => { callStatusRef.current = callStatus }, [callStatus])
 
   const cleanup = useCallback(() => {
     // Stop local media tracks
-    if (localStream) {
-      localStream.getTracks().forEach(track => track.stop())
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => track.stop())
     }
-    setLocalStream(null)
-    setRemoteStream(null)
 
-    // Close peer connection
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close()
-      peerConnectionRef.current = null
+    // Close all peer connections
+    peerConnectionsRef.current.forEach(pc => pc.close())
+    peerConnectionsRef.current.clear()
+    pendingCandidatesRef.current.clear()
+
+    // Leave call room
+    if (socket && roomIdRef.current && user) {
+      socket.emit('leaveCallRoom', { roomId: roomIdRef.current, userId: user.id })
     }
 
     // Clear duration timer
@@ -75,213 +96,324 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       durationIntervalRef.current = null
     }
 
-    pendingCandidatesRef.current = []
-    incomingOfferRef.current = null
+    roomIdRef.current = null
+    setLocalStream(null)
+    setRemoteStreams(new Map())
     setCallStatus('idle')
-    setRemotePeer(null)
+    setCallInfo(null)
     setIsMuted(false)
     setIsCameraOff(false)
     setCallDuration(0)
-  }, [localStream])
+    setParticipantCount(0)
+  }, [socket, user])
 
-  const createPeerConnection = useCallback((peerId: string) => {
+  const getMediaStream = useCallback(async (type: CallType): Promise<MediaStream> => {
+    return navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: type === 'video',
+    })
+  }, [])
+
+  const createPeerConnection = useCallback((peerId: string, peerName: string, peerAvatar?: string) => {
+    // Close existing connection if any
+    const existingPc = peerConnectionsRef.current.get(peerId)
+    if (existingPc) {
+      existingPc.close()
+    }
+
     const pc = new RTCPeerConnection(ICE_SERVERS)
 
     pc.onicecandidate = (event) => {
-      if (event.candidate && socket) {
+      if (event.candidate && socket && roomIdRef.current && user) {
         socket.emit('iceCandidate', {
+          roomId: roomIdRef.current,
           to: peerId,
+          from: user.id,
           candidate: event.candidate.toJSON(),
         })
       }
     }
 
     pc.ontrack = (event) => {
-      setRemoteStream(event.streams[0])
+      setRemoteStreams(prev => {
+        const updated = new Map(prev)
+        updated.set(peerId, {
+          stream: event.streams[0],
+          name: peerName,
+          avatar: peerAvatar,
+        })
+        return updated
+      })
+      setParticipantCount(prev => {
+        const newCount = peerConnectionsRef.current.size
+        return newCount > prev ? newCount : prev
+      })
     }
 
     pc.oniceconnectionstatechange = () => {
-      if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
-        cleanup()
+      if (pc.iceConnectionState === 'failed') {
+        pc.close()
+        peerConnectionsRef.current.delete(peerId)
+        setRemoteStreams(prev => {
+          const updated = new Map(prev)
+          updated.delete(peerId)
+          return updated
+        })
       }
     }
 
-    peerConnectionRef.current = pc
-    return pc
-  }, [socket, cleanup])
-
-  const getMediaStream = useCallback(async (type: CallType): Promise<MediaStream> => {
-    const constraints: MediaStreamConstraints = {
-      audio: true,
-      video: type === 'video',
-    }
-    return navigator.mediaDevices.getUserMedia(constraints)
-  }, [])
-
-  const startCall = useCallback(async (peer: CallPeer, type: CallType) => {
-    if (!socket || !user || callStatus !== 'idle') return
-
-    try {
-      setCallType(type)
-      setRemotePeer(peer)
-      setCallStatus('outgoing')
-
-      const stream = await getMediaStream(type)
-      setLocalStream(stream)
-
-      const pc = createPeerConnection(peer.id)
-
-      // Add local tracks to peer connection
+    // Add local tracks
+    const stream = localStreamRef.current
+    if (stream) {
       stream.getTracks().forEach(track => {
         pc.addTrack(track, stream)
       })
+    }
 
-      // Create and send offer
-      const offer = await pc.createOffer()
-      await pc.setLocalDescription(offer)
+    peerConnectionsRef.current.set(peerId, pc)
+    return pc
+  }, [socket, user])
 
-      socket.emit('callUser', {
+  const processPendingCandidates = useCallback(async (peerId: string) => {
+    const pc = peerConnectionsRef.current.get(peerId)
+    const pending = pendingCandidatesRef.current.get(peerId)
+    if (pc && pc.remoteDescription && pending && pending.length > 0) {
+      for (const candidate of pending) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate))
+        } catch (err) {
+          console.error('Error adding queued ICE candidate:', err)
+        }
+      }
+      pendingCandidatesRef.current.delete(peerId)
+    }
+  }, [])
+
+  // Start a call (1-on-1 or group)
+  const startCall = useCallback((participants: CallPeer[], type: CallType, groupName?: string) => {
+    if (!socket || !user || callStatusRef.current !== 'idle') return
+
+    const roomId = `${user.id}-${Date.now()}`
+    roomIdRef.current = roomId
+
+    setCallType(type)
+    setCallInfo({ roomId, callerName: user.name, callerAvatar: user.avatar, groupName })
+    setCallStatus('outgoing')
+
+    getMediaStream(type).then((stream) => {
+      localStreamRef.current = stream
+      setLocalStream(stream)
+
+      // Emit startCall to server which invites all participants
+      socket.emit('startCall', {
+        roomId,
         from: user.id,
-        to: peer.id,
-        offer,
+        participants: participants.map(p => p.id),
         callerName: user.name,
         callerAvatar: user.avatar,
         callType: type,
+        groupName,
       })
-    } catch (err) {
-      console.error('Error starting call:', err)
+
+      // Caller also joins the call room
+      socket.emit('joinCallRoom', {
+        roomId,
+        userId: user.id,
+        userName: user.name,
+        userAvatar: user.avatar,
+      })
+    }).catch((err) => {
+      console.error('Error getting media stream:', err)
       cleanup()
-    }
-  }, [socket, user, callStatus, getMediaStream, createPeerConnection, cleanup])
+    })
+  }, [socket, user, getMediaStream, cleanup])
 
-  const acceptCall = useCallback(async () => {
-    if (!socket || !remotePeer || !incomingOfferRef.current) return
+  // Accept an incoming call
+  const acceptCall = useCallback(() => {
+    if (!socket || !user || !callInfo) return
 
-    try {
-      setCallStatus('active')
+    setCallStatus('active')
 
-      const stream = await getMediaStream(callType)
+    getMediaStream(callTypeRef.current).then((stream) => {
+      localStreamRef.current = stream
       setLocalStream(stream)
-
-      const pc = createPeerConnection(remotePeer.id)
-
-      // Add local tracks
-      stream.getTracks().forEach(track => {
-        pc.addTrack(track, stream)
-      })
-
-      // Set remote description from offer
-      await pc.setRemoteDescription(new RTCSessionDescription(incomingOfferRef.current))
-
-      // Process any pending ICE candidates
-      for (const candidate of pendingCandidatesRef.current) {
-        await pc.addIceCandidate(new RTCIceCandidate(candidate))
-      }
-      pendingCandidatesRef.current = []
-
-      // Create and send answer
-      const answer = await pc.createAnswer()
-      await pc.setLocalDescription(answer)
-
-      socket.emit('answerCall', {
-        to: remotePeer.id,
-        answer,
-      })
 
       // Start duration timer
       durationIntervalRef.current = setInterval(() => {
         setCallDuration(prev => prev + 1)
       }, 1000)
-    } catch (err) {
-      console.error('Error accepting call:', err)
+
+      // Join the call room — server will tell us about existing peers
+      socket.emit('joinCallRoom', {
+        roomId: callInfo.roomId,
+        userId: user.id,
+        userName: user.name,
+        userAvatar: user.avatar,
+      })
+    }).catch((err) => {
+      console.error('Error getting media stream:', err)
       cleanup()
-    }
-  }, [socket, remotePeer, callType, getMediaStream, createPeerConnection, cleanup])
+    })
+  }, [socket, user, callInfo, getMediaStream, cleanup])
 
   const rejectCall = useCallback(() => {
-    if (!socket || !remotePeer) return
-    socket.emit('rejectCall', { to: remotePeer.id })
+    if (!socket || !callInfo || !user) return
+    socket.emit('rejectCall', {
+      roomId: callInfo.roomId,
+      userId: user.id,
+      to: callInfo.callerName, // we use the caller's ID from callInfo
+    })
+    // We stored the caller userId in callInfo - need to find it
+    // The "from" user id is embedded in the roomId (format: <callerId>-<timestamp>)
+    const callerId = callInfo.roomId.split('-').slice(0, -1).join('-')
+    socket.emit('rejectCall', {
+      roomId: callInfo.roomId,
+      userId: user.id,
+      to: callerId,
+    })
     cleanup()
-  }, [socket, remotePeer, cleanup])
+  }, [socket, callInfo, user, cleanup])
 
   const endCall = useCallback(() => {
-    if (!socket || !remotePeer) return
-    socket.emit('endCall', { to: remotePeer.id })
     cleanup()
-  }, [socket, remotePeer, cleanup])
+  }, [cleanup])
 
   const toggleMute = useCallback(() => {
-    if (localStream) {
-      localStream.getAudioTracks().forEach(track => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getAudioTracks().forEach(track => {
         track.enabled = !track.enabled
       })
       setIsMuted(prev => !prev)
     }
-  }, [localStream])
+  }, [])
 
   const toggleCamera = useCallback(() => {
-    if (localStream) {
-      localStream.getVideoTracks().forEach(track => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getVideoTracks().forEach(track => {
         track.enabled = !track.enabled
       })
       setIsCameraOff(prev => !prev)
     }
-  }, [localStream])
+  }, [])
 
   // Socket event listeners
   useEffect(() => {
-    if (!socket) return
+    if (!socket || !user) return
 
+    // Incoming call from another user
     const handleIncomingCall = (data: {
+      roomId: string
       from: string
-      offer: RTCSessionDescriptionInit
       callerName: string
       callerAvatar?: string
       callType: CallType
+      groupName?: string
     }) => {
-      // Only accept incoming call if idle
-      if (callStatus !== 'idle') {
-        socket.emit('rejectCall', { to: data.from })
+      if (callStatusRef.current !== 'idle') {
+        socket.emit('rejectCall', { roomId: data.roomId, userId: user.id, to: data.from })
         return
       }
 
-      incomingOfferRef.current = data.offer
+      roomIdRef.current = data.roomId
       setCallType(data.callType)
-      setRemotePeer({
-        id: data.from,
-        name: data.callerName,
-        avatar: data.callerAvatar,
+      setCallInfo({
+        roomId: data.roomId,
+        callerName: data.callerName,
+        callerAvatar: data.callerAvatar,
+        groupName: data.groupName,
       })
       setCallStatus('incoming')
     }
 
-    const handleCallAnswered = async (data: { answer: RTCSessionDescriptionInit }) => {
-      const pc = peerConnectionRef.current
+    // Server tells us about existing peers when we join a room
+    const handleExistingPeers = async (data: { roomId: string; peers: string[] }) => {
+      // For each existing peer, create a connection and send an offer
+      for (const peerId of data.peers) {
+        try {
+          const pc = createPeerConnection(peerId, peerId)
+
+          const offer = await pc.createOffer()
+          await pc.setLocalDescription(offer)
+
+          socket.emit('callOffer', {
+            roomId: data.roomId,
+            to: peerId,
+            from: user.id,
+            offer,
+          })
+        } catch (err) {
+          console.error(`Error creating offer for peer ${peerId}:`, err)
+        }
+      }
+    }
+
+    // A new peer joined the room — wait for their offer
+    const handlePeerJoined = (_data: {
+      roomId: string
+      userId: string
+      userName: string
+      userAvatar?: string
+    }) => {
+      // If we were the caller and in outgoing state, move to active
+      if (callStatusRef.current === 'outgoing') {
+        setCallStatus('active')
+        durationIntervalRef.current = setInterval(() => {
+          setCallDuration(prev => prev + 1)
+        }, 1000)
+      }
+      setParticipantCount(prev => prev + 1)
+    }
+
+    // Receive an offer from a peer
+    const handleCallOffer = async (data: {
+      roomId: string
+      from: string
+      offer: RTCSessionDescriptionInit
+    }) => {
+      try {
+        const pc = createPeerConnection(data.from, data.from)
+
+        await pc.setRemoteDescription(new RTCSessionDescription(data.offer))
+        await processPendingCandidates(data.from)
+
+        const answer = await pc.createAnswer()
+        await pc.setLocalDescription(answer)
+
+        socket.emit('callAnswer', {
+          roomId: data.roomId,
+          to: data.from,
+          from: user.id,
+          answer,
+        })
+      } catch (err) {
+        console.error('Error handling call offer:', err)
+      }
+    }
+
+    // Receive an answer from a peer
+    const handleCallAnswer = async (data: {
+      roomId: string
+      from: string
+      answer: RTCSessionDescriptionInit
+    }) => {
+      const pc = peerConnectionsRef.current.get(data.from)
       if (!pc) return
 
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(data.answer))
-
-        // Process any pending ICE candidates
-        for (const candidate of pendingCandidatesRef.current) {
-          await pc.addIceCandidate(new RTCIceCandidate(candidate))
-        }
-        pendingCandidatesRef.current = []
-
-        setCallStatus('active')
-
-        // Start duration timer
-        durationIntervalRef.current = setInterval(() => {
-          setCallDuration(prev => prev + 1)
-        }, 1000)
+        await processPendingCandidates(data.from)
       } catch (err) {
         console.error('Error handling call answer:', err)
-        cleanup()
       }
     }
 
-    const handleIceCandidate = async (data: { candidate: RTCIceCandidateInit }) => {
-      const pc = peerConnectionRef.current
+    // Receive ICE candidate from a peer
+    const handleIceCandidate = async (data: {
+      roomId: string
+      from: string
+      candidate: RTCIceCandidateInit
+    }) => {
+      const pc = peerConnectionsRef.current.get(data.from)
       if (pc && pc.remoteDescription) {
         try {
           await pc.addIceCandidate(new RTCIceCandidate(data.candidate))
@@ -289,52 +421,83 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
           console.error('Error adding ICE candidate:', err)
         }
       } else {
-        // Queue candidate if remote description not yet set
-        pendingCandidatesRef.current.push(data.candidate)
+        // Queue candidate
+        const pending = pendingCandidatesRef.current.get(data.from) || []
+        pending.push(data.candidate)
+        pendingCandidatesRef.current.set(data.from, pending)
       }
     }
 
-    const handleCallEnded = () => {
-      cleanup()
+    // A peer left the call
+    const handlePeerLeft = (data: { roomId: string; userId: string }) => {
+      const pc = peerConnectionsRef.current.get(data.userId)
+      if (pc) {
+        pc.close()
+        peerConnectionsRef.current.delete(data.userId)
+      }
+      pendingCandidatesRef.current.delete(data.userId)
+
+      setRemoteStreams(prev => {
+        const updated = new Map(prev)
+        updated.delete(data.userId)
+        return updated
+      })
+      setParticipantCount(peerConnectionsRef.current.size)
+
+      // If no more peers, end the call
+      if (peerConnectionsRef.current.size === 0 && callStatusRef.current === 'active') {
+        cleanup()
+      }
     }
 
-    const handleCallRejected = () => {
-      cleanup()
+    const handleCallRejected = (_data: { roomId: string; userId: string }) => {
+      // If it was a 1-on-1 call and the only participant rejected, end call
+      if (peerConnectionsRef.current.size === 0 && callStatusRef.current === 'outgoing') {
+        cleanup()
+      }
     }
 
-    const handleCallUnavailable = (data: { reason: string }) => {
-      console.warn('Call unavailable:', data.reason)
-      cleanup()
+    const handleCallUnavailable = (_data: { roomId: string; reason: string }) => {
+      if (callStatusRef.current === 'outgoing') {
+        cleanup()
+      }
     }
 
     socket.on('incomingCall', handleIncomingCall)
-    socket.on('callAnswered', handleCallAnswered)
+    socket.on('existingPeers', handleExistingPeers)
+    socket.on('peerJoined', handlePeerJoined)
+    socket.on('callOffer', handleCallOffer)
+    socket.on('callAnswer', handleCallAnswer)
     socket.on('iceCandidate', handleIceCandidate)
-    socket.on('callEnded', handleCallEnded)
+    socket.on('peerLeft', handlePeerLeft)
     socket.on('callRejected', handleCallRejected)
     socket.on('callUnavailable', handleCallUnavailable)
 
     return () => {
       socket.off('incomingCall', handleIncomingCall)
-      socket.off('callAnswered', handleCallAnswered)
+      socket.off('existingPeers', handleExistingPeers)
+      socket.off('peerJoined', handlePeerJoined)
+      socket.off('callOffer', handleCallOffer)
+      socket.off('callAnswer', handleCallAnswer)
       socket.off('iceCandidate', handleIceCandidate)
-      socket.off('callEnded', handleCallEnded)
+      socket.off('peerLeft', handlePeerLeft)
       socket.off('callRejected', handleCallRejected)
       socket.off('callUnavailable', handleCallUnavailable)
     }
-  }, [socket, callStatus, cleanup])
+  }, [socket, user, createPeerConnection, processPendingCandidates, cleanup])
 
   return (
     <CallContext.Provider
       value={{
         callStatus,
         callType,
-        remotePeer,
+        callInfo,
         localStream,
-        remoteStream,
+        remoteStreams,
         isMuted,
         isCameraOff,
         callDuration,
+        participantCount,
         startCall,
         acceptCall,
         rejectCall,

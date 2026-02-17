@@ -14,6 +14,9 @@ export interface Contact {
   avatar?: string
   isOnline?: boolean
   lastSeen?: Date
+  isGroup?: boolean
+  participants?: { _id: string; name: string; username?: string; avatar?: string }[]
+  groupName?: string
 }
 
 export interface Message {

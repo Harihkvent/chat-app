@@ -16,6 +16,7 @@ interface ChatWindowProps {
 const ChatWindow = ({ activeContact }: ChatWindowProps) => {
   const { user, token } = useAuth()
   const { socket } = useSocket()
+  const { startCall } = useCall()
   const [message, setMessage] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
   const [conversationId, setConversationId] = useState<string | null>(null)
@@ -324,10 +325,38 @@ const ChatWindow = ({ activeContact }: ChatWindowProps) => {
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <button className="p-2 hover:bg-gray-100 rounded-full transition" title="Voice call">
+          <button
+            className="p-2 hover:bg-gray-100 rounded-full transition"
+            title="Voice call"
+            onClick={() => {
+              if (!activeContact) return
+              if (activeContact.isGroup && activeContact.participants) {
+                const peers = activeContact.participants
+                  .filter(p => p._id !== user?.id)
+                  .map(p => ({ id: p._id, name: p.name, avatar: p.avatar }))
+                startCall(peers, 'audio', activeContact.groupName || activeContact.name)
+              } else {
+                startCall([{ id: activeContact._id, name: activeContact.name, avatar: activeContact.avatar }], 'audio')
+              }
+            }}
+          >
             <FiPhone size={20} className="text-gray-600" />
           </button>
-          <button className="p-2 hover:bg-gray-100 rounded-full transition" title="Video call">
+          <button
+            className="p-2 hover:bg-gray-100 rounded-full transition"
+            title="Video call"
+            onClick={() => {
+              if (!activeContact) return
+              if (activeContact.isGroup && activeContact.participants) {
+                const peers = activeContact.participants
+                  .filter(p => p._id !== user?.id)
+                  .map(p => ({ id: p._id, name: p.name, avatar: p.avatar }))
+                startCall(peers, 'video', activeContact.groupName || activeContact.name)
+              } else {
+                startCall([{ id: activeContact._id, name: activeContact.name, avatar: activeContact.avatar }], 'video')
+              }
+            }}
+          >
             <FiVideo size={20} className="text-gray-600" />
           </button>
           <button className="p-2 hover:bg-gray-100 rounded-full transition" title="More options">
