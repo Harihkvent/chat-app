@@ -16,6 +16,7 @@ const CALL_ROOM_TTL = 3600;
 
 // Redis key prefixes
 const USER_SOCKET_KEY = "usersocket:";
+const SOCKET_USER_KEY = "socketuser:"; // Reverse index: socketId → userId
 const CALL_ROOM_KEY = "callroom:";
 
 let redis: Redis | null = null;
@@ -58,7 +59,10 @@ const memCallRooms = new Map<string, Set<string>>();
 
 export async function setUserSocket(userId: string, socketId: string): Promise<void> {
   if (redis) {
-    await redis.set(USER_SOCKET_KEY + userId, socketId, "EX", USER_SOCKET_TTL);
+    const pipeline = redis.pipeline();
+    pipeline.set(USER_SOCKET_KEY + userId, socketId, "EX", USER_SOCKET_TTL);
+    pipeline.set(SOCKET_USER_KEY + socketId, userId, "EX", USER_SOCKET_TTL);
+    await pipeline.exec();
   } else {
     memUserSockets.set(userId, socketId);
   }
@@ -73,7 +77,13 @@ export async function getUserSocket(userId: string): Promise<string | null> {
 
 export async function deleteUserSocket(userId: string): Promise<void> {
   if (redis) {
-    await redis.del(USER_SOCKET_KEY + userId);
+    const socketId = await redis.get(USER_SOCKET_KEY + userId);
+    const pipeline = redis.pipeline();
+    pipeline.del(USER_SOCKET_KEY + userId);
+    if (socketId) {
+      pipeline.del(SOCKET_USER_KEY + socketId);
+    }
+    await pipeline.exec();
   } else {
     memUserSockets.delete(userId);
   }
@@ -81,27 +91,7 @@ export async function deleteUserSocket(userId: string): Promise<void> {
 
 export async function findUserBySocket(socketId: string): Promise<string | null> {
   if (redis) {
-    // Scan for user with this socketId
-    let cursor = "0";
-    do {
-      const [nextCursor, keys] = await redis.scan(
-        cursor,
-        "MATCH",
-        USER_SOCKET_KEY + "*",
-        "COUNT",
-        100
-      );
-      cursor = nextCursor;
-      if (keys.length > 0) {
-        const values = await redis.mget(...keys);
-        for (let i = 0; i < keys.length; i++) {
-          if (values[i] === socketId) {
-            return keys[i].replace(USER_SOCKET_KEY, "");
-          }
-        }
-      }
-    } while (cursor !== "0");
-    return null;
+    return redis.get(SOCKET_USER_KEY + socketId);
   } else {
     for (const [userId, sid] of memUserSockets.entries()) {
       if (sid === socketId) return userId;
@@ -155,6 +145,7 @@ export async function getCallRoomMembers(roomId: string): Promise<string[]> {
 export async function getAllCallRooms(): Promise<Map<string, Set<string>>> {
   if (redis) {
     const result = new Map<string, Set<string>>();
+    const allKeys: string[] = [];
     let cursor = "0";
     do {
       const [nextCursor, keys] = await redis.scan(
@@ -165,12 +156,25 @@ export async function getAllCallRooms(): Promise<Map<string, Set<string>>> {
         100
       );
       cursor = nextCursor;
-      for (const key of keys) {
-        const members = await redis.smembers(key);
-        const roomId = key.replace(CALL_ROOM_KEY, "");
-        result.set(roomId, new Set(members));
-      }
+      allKeys.push(...keys);
     } while (cursor !== "0");
+
+    if (allKeys.length > 0) {
+      const pipeline = redis.pipeline();
+      for (const key of allKeys) {
+        pipeline.smembers(key);
+      }
+      const results = await pipeline.exec();
+      if (results) {
+        for (let i = 0; i < allKeys.length; i++) {
+          const [err, members] = results[i];
+          if (!err && Array.isArray(members)) {
+            const roomId = allKeys[i].replace(CALL_ROOM_KEY, "");
+            result.set(roomId, new Set(members as string[]));
+          }
+        }
+      }
+    }
     return result;
   }
   return memCallRooms;

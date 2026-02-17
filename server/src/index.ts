@@ -6,7 +6,6 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import path from "path";
 import { createAdapter } from "@socket.io/redis-adapter";
-import Redis from "ioredis";
 import authRoutes from "./routes/auth";
 import userRoutes from "./routes/users";
 import chatRoutes from "./routes/chats";
@@ -17,6 +16,7 @@ import Message from "./models/Message";
 import Conversation from "./models/Conversation";
 import {
   initRedis,
+  getRedisClient,
   setUserSocket,
   getUserSocket,
   deleteUserSocket,
@@ -51,13 +51,12 @@ app.use("/api/stories", storyRoutes);
 
 // Setup Redis adapter for Socket.io when REDIS_URL is available
 async function setupRedisAdapter() {
-  const redisUrl = process.env.REDIS_URL;
-  if (!redisUrl) return;
+  const pubClient = getRedisClient();
+  if (!pubClient) return;
 
   try {
-    const pubClient = new Redis(redisUrl);
     const subClient = pubClient.duplicate();
-    await Promise.all([pubClient.ping(), subClient.ping()]);
+    await subClient.ping();
     io.adapter(createAdapter(pubClient, subClient));
     console.log("✅ Socket.io Redis adapter enabled (multi-instance ready)");
   } catch (err) {
