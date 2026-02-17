@@ -20,7 +20,7 @@ export interface RemotePeerStream {
 interface CallContextType {
   callStatus: CallStatus
   callType: CallType
-  callInfo: { roomId: string; callerName: string; callerAvatar?: string; groupName?: string } | null
+  callInfo: { roomId: string; callerId: string; callerName: string; callerAvatar?: string; groupName?: string } | null
   localStream: MediaStream | null
   remoteStreams: Map<string, RemotePeerStream>
   isMuted: boolean
@@ -51,7 +51,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
   const [callStatus, setCallStatus] = useState<CallStatus>('idle')
   const [callType, setCallType] = useState<CallType>('audio')
   const [callInfo, setCallInfo] = useState<{
-    roomId: string; callerName: string; callerAvatar?: string; groupName?: string
+    roomId: string; callerId: string; callerName: string; callerAvatar?: string; groupName?: string
   } | null>(null)
   const [localStream, setLocalStream] = useState<MediaStream | null>(null)
   const [remoteStreams, setRemoteStreams] = useState<Map<string, RemotePeerStream>>(new Map())
@@ -197,7 +197,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     roomIdRef.current = roomId
 
     setCallType(type)
-    setCallInfo({ roomId, callerName: user.name, callerAvatar: user.avatar, groupName })
+    setCallInfo({ roomId, callerId: user.id, callerName: user.name, callerAvatar: user.avatar, groupName })
     setCallStatus('outgoing')
 
     getMediaStream(type).then((stream) => {
@@ -261,15 +261,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     socket.emit('rejectCall', {
       roomId: callInfo.roomId,
       userId: user.id,
-      to: callInfo.callerName, // we use the caller's ID from callInfo
-    })
-    // We stored the caller userId in callInfo - need to find it
-    // The "from" user id is embedded in the roomId (format: <callerId>-<timestamp>)
-    const callerId = callInfo.roomId.split('-').slice(0, -1).join('-')
-    socket.emit('rejectCall', {
-      roomId: callInfo.roomId,
-      userId: user.id,
-      to: callerId,
+      to: callInfo.callerId,
     })
     cleanup()
   }, [socket, callInfo, user, cleanup])
@@ -318,6 +310,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       setCallType(data.callType)
       setCallInfo({
         roomId: data.roomId,
+        callerId: data.from,
         callerName: data.callerName,
         callerAvatar: data.callerAvatar,
         groupName: data.groupName,
@@ -328,9 +321,10 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     // Server tells us about existing peers when we join a room
     const handleExistingPeers = async (data: { roomId: string; peers: string[] }) => {
       // For each existing peer, create a connection and send an offer
+      // Peer name will be resolved when their answer arrives with metadata
       for (const peerId of data.peers) {
         try {
-          const pc = createPeerConnection(peerId, peerId)
+          const pc = createPeerConnection(peerId, 'Participant')
 
           const offer = await pc.createOffer()
           await pc.setLocalDescription(offer)
@@ -339,6 +333,8 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
             roomId: data.roomId,
             to: peerId,
             from: user.id,
+            fromName: user.name,
+            fromAvatar: user.avatar,
             offer,
           })
         } catch (err) {
@@ -368,10 +364,12 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     const handleCallOffer = async (data: {
       roomId: string
       from: string
+      fromName: string
+      fromAvatar?: string
       offer: RTCSessionDescriptionInit
     }) => {
       try {
-        const pc = createPeerConnection(data.from, data.from)
+        const pc = createPeerConnection(data.from, data.fromName, data.fromAvatar)
 
         await pc.setRemoteDescription(new RTCSessionDescription(data.offer))
         await processPendingCandidates(data.from)
@@ -383,6 +381,8 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
           roomId: data.roomId,
           to: data.from,
           from: user.id,
+          fromName: user.name,
+          fromAvatar: user.avatar,
           answer,
         })
       } catch (err) {
@@ -390,14 +390,27 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       }
     }
 
-    // Receive an answer from a peer
+    // Receive an answer from a peer — update peer metadata
     const handleCallAnswer = async (data: {
       roomId: string
       from: string
+      fromName: string
+      fromAvatar?: string
       answer: RTCSessionDescriptionInit
     }) => {
       const pc = peerConnectionsRef.current.get(data.from)
       if (!pc) return
+
+      // Update the remote stream metadata with the answerer's name
+      setRemoteStreams(prev => {
+        const existing = prev.get(data.from)
+        if (existing) {
+          const updated = new Map(prev)
+          updated.set(data.from, { ...existing, name: data.fromName, avatar: data.fromAvatar })
+          return updated
+        }
+        return prev
+      })
 
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(data.answer))

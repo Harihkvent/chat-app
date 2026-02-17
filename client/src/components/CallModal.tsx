@@ -245,13 +245,13 @@ const CallModal = () => {
 
               {/* Audio wave animation */}
               <div className="flex items-end space-x-1 h-8">
-                {[1, 2, 3, 4, 5].map((i) => (
+                {[14, 24, 18, 28, 16].map((h, i) => (
                   <div
                     key={i}
                     className="w-1.5 bg-green-400 rounded-full animate-pulse"
                     style={{
-                      height: `${12 + Math.random() * 20}px`,
-                      animationDelay: `${i * 0.15}s`,
+                      height: `${h}px`,
+                      animationDelay: `${(i + 1) * 0.15}s`,
                       animationDuration: '0.8s',
                     }}
                   />

@@ -310,6 +310,8 @@ io.on("connection", (socket) => {
     roomId: string;
     to: string;
     from: string;
+    fromName: string;
+    fromAvatar?: string;
     offer: object;
   }) => {
     const recipientSocketId = userSockets.get(data.to);
@@ -317,6 +319,8 @@ io.on("connection", (socket) => {
       io.to(recipientSocketId).emit("callOffer", {
         roomId: data.roomId,
         from: data.from,
+        fromName: data.fromName,
+        fromAvatar: data.fromAvatar,
         offer: data.offer,
       });
     }
@@ -327,6 +331,8 @@ io.on("connection", (socket) => {
     roomId: string;
     to: string;
     from: string;
+    fromName: string;
+    fromAvatar?: string;
     answer: object;
   }) => {
     const recipientSocketId = userSockets.get(data.to);
@@ -334,6 +340,8 @@ io.on("connection", (socket) => {
       io.to(recipientSocketId).emit("callAnswer", {
         roomId: data.roomId,
         from: data.from,
+        fromName: data.fromName,
+        fromAvatar: data.fromAvatar,
         answer: data.answer,
       });
     }
