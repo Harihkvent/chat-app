@@ -1,6 +1,6 @@
 # Chat App - Full-Stack Social Media & Messaging Platform
 
-A modern, feature-rich social media and real-time messaging application built with React (Vite), Node.js, Socket.io, and MongoDB. Combines the best features of WhatsApp, Instagram, and modern social platforms - including messaging, posts, stories, profiles, and social interactions.
+A modern, feature-rich social media and real-time messaging application built with React (Vite), Node.js, Socket.io, and MongoDB. Combines the best features of WhatsApp, Instagram, and modern social platforms - including messaging, video/audio calling, posts, stories, profiles, and social interactions.
 
 ## ✨ Features
 
@@ -22,6 +22,19 @@ A modern, feature-rich social media and real-time messaging application built wi
 - Message timestamps
 - File/image sharing in chats
 - Message history with conversation persistence
+
+### 📞 Video & Audio Calling (WebRTC)
+- **1-on-1 calls**: Voice and video calls between any two users
+- **Group calls**: Multi-party audio and video calls for group conversations
+- **WebRTC mesh topology**: Direct peer-to-peer connections for low-latency media
+- **Call controls**: Mute/unmute microphone, toggle camera on/off
+- **Call states**: Incoming call ring, outgoing call animation, active call UI
+- **Video grid layout**: Adaptive grid that scales with participant count (1→full, 2→side-by-side, 4→2×2, 6→3×2)
+- **Picture-in-picture**: Local video shown as a floating overlay during video calls
+- **Group call indicators**: Shows participant count, group name, and stacked avatars
+- **Call duration timer**: Real-time call duration tracking
+- **STUN/NAT traversal**: Uses Google's public STUN servers for connectivity through firewalls
+- **Socket.io signaling**: WebRTC offer/answer/ICE candidate exchange via existing Socket.io connection
 
 ### 📱 Social Feed (Instagram-Inspired)
 - Personalized feed showing posts from followed users
@@ -80,6 +93,8 @@ A modern, feature-rich social media and real-time messaging application built wi
 - **Express.js 5** - Web framework
 - **Socket.io** - WebSocket server
 - **MongoDB** with Mongoose - Database
+- **Redis** + **@socket.io/redis-adapter** - Horizontal scaling (optional)
+- **ioredis** - Redis client
 - **JWT** - Token-based authentication
 - **bcryptjs** - Password hashing
 - **Multer** - File upload handling
@@ -97,6 +112,7 @@ Before you begin, ensure you have installed:
 - **Node.js** 18.x or higher
 - **MongoDB** (local installation or Atlas cloud)
 - **npm** or **yarn**
+- **Redis** (optional — only needed for running multiple server instances)
 - **Google OAuth credentials** (optional, for Google Sign-in)
 
 ## 🚀 Quick Start
@@ -126,6 +142,28 @@ mongod
 2. Create a cluster and get your connection string
 3. Whitelist your IP address
 
+### 2b. Redis Setup (Optional — for Horizontal Scaling)
+
+Redis is **only needed** when running multiple server instances behind a load balancer. When `REDIS_URL` is not set, the server uses in-memory state and works perfectly in single-instance mode.
+
+**Option A: Using Docker**
+```bash
+docker run -d --name redis -p 6379:6379 redis:7-alpine
+```
+
+**Option B: Local Redis**
+```bash
+# macOS
+brew install redis && redis-server
+
+# Ubuntu/Debian
+sudo apt-get install redis-server && sudo systemctl start redis
+```
+
+**Option C: Cloud Redis (Redis Cloud, AWS ElastiCache, Upstash)**
+1. Create a Redis instance on your preferred cloud provider
+2. Use the provided connection URL in `REDIS_URL`
+
 ### 3. Google OAuth Setup (Optional)
 
 1. Visit [Google Cloud Console](https://console.cloud.google.com/)
@@ -150,6 +188,9 @@ MONGO_URI=mongodb://localhost:27017/chatapp
 
 JWT_SECRET=your_super_secret_jwt_key_change_this_in_production
 GOOGLE_CLIENT_ID=your_google_client_id_here  # Optional
+
+# Redis (optional — for horizontal scaling with multiple server instances)
+# REDIS_URL=redis://localhost:6379
 ```
 
 **Frontend Configuration**
@@ -218,6 +259,28 @@ The application should now be running at `http://localhost:5173` 🎉
    - View online/offline status
    - Get read receipts (✓✓)
 
+### Video & Audio Calling
+1. **Start a 1-on-1 Call**:
+   - Open a chat conversation
+   - Click the **📞 phone icon** for a voice call or **📹 video icon** for a video call
+   - Wait for the other user to accept
+2. **Start a Group Call**:
+   - Open a group conversation
+   - Click the phone or video icon — all group members will be invited
+3. **Receive a Call**:
+   - An incoming call overlay appears with caller name and call type
+   - Click **Accept** to join or **Decline** to reject
+4. **During a Call**:
+   - **Mute/Unmute**: Toggle your microphone
+   - **Camera On/Off**: Toggle your camera (video calls)
+   - **End Call**: Hang up and leave the call
+   - Call duration is displayed in real time
+5. **Requirements**:
+   - Browser must support WebRTC (Chrome, Firefox, Safari, Edge)
+   - Microphone permission is required for all calls
+   - Camera permission is required for video calls
+   - Both users must be online for the call to connect
+
 ### User Profile
 1. **View Your Profile**: Click profile icon
 2. **Edit Profile**: Update bio, avatar, website
@@ -237,6 +300,7 @@ chat-app/
 │   ├── public/                     # Static assets
 │   ├── src/
 │   │   ├── components/             # Reusable UI components
+│   │   │   ├── CallModal.tsx       # Video/audio call overlay UI
 │   │   │   ├── ChatSidebar.tsx     # Chat conversation list
 │   │   │   ├── ChatWindow.tsx      # Chat message interface
 │   │   │   ├── CreateGroupModal.tsx # Group creation
@@ -245,6 +309,8 @@ chat-app/
 │   │   │   └── ProtectedRoute.tsx  # Auth route guard
 │   │   ├── contexts/               # React context providers
 │   │   │   ├── AuthContext.tsx     # Authentication state
+│   │   │   ├── CallContext.tsx     # WebRTC call state & peer connections
+│   │   │   ├── ThemeContext.tsx    # Dark/light mode theme state
 │   │   │   └── SocketContext.tsx   # Socket.io connection
 │   │   ├── lib/
 │   │   │   └── api.ts              # Axios API client
@@ -280,6 +346,7 @@ chat-app/
 │   │   │   ├── posts.ts            # Post routes
 │   │   │   ├── stories.ts          # Story routes
 │   │   │   └── users.ts            # User routes
+│   │   ├── store.ts                # Redis/in-memory shared state (user sockets, call rooms)
 │   │   └── index.ts                # Server entry & Socket.io
 │   ├── uploads/                    # File uploads directory
 │   │   └── chats/                  # Chat media
@@ -356,7 +423,7 @@ chat-app/
 
 ### WebSocket Events
 
-**Client → Server Events:**
+**Client → Server Events (Messaging):**
 - `userOnline` - User comes online
 - `userOffline` - User goes offline  
 - `sendMessage` - Send a chat message
@@ -365,13 +432,33 @@ chat-app/
 - `markAsRead` - Mark message as read
 - `joinRoom` - Join conversation room
 
-**Server → Client Events:**
+**Server → Client Events (Messaging):**
 - `receiveMessage` - Receive new message
 - `messageSent` - Message sent confirmation
 - `userStatusChange` - User online/offline status change
 - `userTyping` - User typing indicator
 - `messageRead` - Message read receipt
 - `messageDelivered` - Message delivered status
+
+**Client → Server Events (Calling):**
+- `startCall` - Create a call room and invite participants
+- `joinCallRoom` - Join an active call room
+- `callOffer` - Send WebRTC offer to a specific peer
+- `callAnswer` - Send WebRTC answer to a specific peer
+- `iceCandidate` - Relay ICE candidate to a specific peer
+- `leaveCallRoom` - Leave the call (hang up)
+- `rejectCall` - Decline an incoming call
+
+**Server → Client Events (Calling):**
+- `incomingCall` - Notify user of an incoming call (includes caller info and call type)
+- `existingPeers` - List of peers already in the call room (sent on join)
+- `peerJoined` - A new peer joined the call
+- `callOffer` - Relayed WebRTC offer from a peer
+- `callAnswer` - Relayed WebRTC answer from a peer
+- `iceCandidate` - Relayed ICE candidate from a peer
+- `peerLeft` - A peer left the call
+- `callRejected` - A peer declined the call
+- `callUnavailable` - All invited participants are offline
 
 ## 🧪 Testing the Application
 
@@ -385,6 +472,11 @@ chat-app/
    - Like and comment on posts
    - Create groups and add members
    - Test real-time features (typing, status, read receipts)
+4. **Test Calling**:
+   - Open a chat with another online user and click the phone/video icon
+   - Accept the call from the other browser window
+   - Test mute, camera toggle, and end call controls
+   - Create a group and test group calling with multiple users
 
 ### Test Scenarios
 - ✅ User registration and login
@@ -399,6 +491,10 @@ chat-app/
 - ✅ Follow/unfollow system
 - ✅ Profile viewing and editing
 - ✅ User search
+- ✅ 1-on-1 voice and video calls
+- ✅ Group voice and video calls
+- ✅ Call controls (mute, camera toggle, end call)
+- ✅ Incoming call accept/reject
 
 For a complete testing checklist, see [docs/TESTING_CHECKLIST.md](docs/TESTING_CHECKLIST.md)
 
@@ -473,6 +569,29 @@ lsof -ti:5173 | xargs kill -9
 - Check allowed file types (jpeg, jpg, png, gif, webp)
 - Ensure correct Content-Type headers
 
+### Video/Audio Call Issues
+**Problem**: Calls not connecting  
+**Solutions**:
+- Ensure both users are online (check the green status indicator)
+- Grant microphone and camera permissions when the browser prompts
+- Check that your browser supports WebRTC (Chrome, Firefox, Safari, Edge)
+- Verify both frontend and backend are running and Socket.io is connected
+- If behind a corporate firewall or strict NAT, calls may fail — TURN servers are not configured by default (see below)
+
+**Problem**: Audio or video not working during a call  
+**Solutions**:
+- Check browser permissions: go to browser settings → Privacy & Security → Microphone/Camera
+- Ensure no other application is exclusively using the microphone or camera
+- Try reloading the page and granting permissions again
+- Check the mute/camera toggle buttons in the call UI
+
+**Problem**: Call drops or has poor quality  
+**Solutions**:
+- Ensure a stable internet connection on both ends
+- For group calls, bandwidth requirements increase with each participant (mesh topology)
+- Close other bandwidth-intensive applications
+- For production deployments, consider adding a TURN server to the ICE configuration in `client/src/contexts/CallContext.tsx`
+
 ## 🚀 Deployment
 
 ### Backend Deployment (Railway, Render, Heroku)
@@ -488,6 +607,7 @@ lsof -ti:5173 | xargs kill -9
    - `JWT_SECRET` - Secret key for JWT
    - `PORT` - Port number (usually auto-set)
    - `GOOGLE_CLIENT_ID` - Optional
+   - `REDIS_URL` - Redis connection string (required when running multiple instances)
 
 3. **Deploy**:
    - Start command: `npm start`
@@ -515,8 +635,10 @@ lsof -ti:5173 | xargs kill -9
 - Update CORS settings in backend for your frontend domain
 - Update Google OAuth authorized origins with production URLs
 - Use production MongoDB instance (Atlas recommended)
-- Enable HTTPS for production
+- Enable HTTPS for production (required for WebRTC camera/microphone access)
 - Set appropriate JWT_SECRET (strong, random string)
+- For video/audio calls behind strict NATs, consider adding a TURN server to the ICE configuration
+- **For horizontal scaling**: Set `REDIS_URL` to enable the Socket.io Redis adapter and shared state — this allows running multiple server instances behind a load balancer (e.g., Nginx, AWS ALB) with sticky sessions
 
 ## 📚 Additional Documentation
 
@@ -568,6 +690,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - **React Team** - Amazing frontend library
 - **Vite** - Lightning-fast build tool
 - **MongoDB** - Flexible NoSQL database
+- **Redis** - In-memory data structure store for scaling
 - **Tailwind CSS** - Utility-first CSS framework
 - **Google** - OAuth 2.0 authentication
 - **Lucide** - Beautiful icon library
@@ -575,7 +698,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 🌟 Features Roadmap
 
 ### Coming Soon
-- [ ] Video/audio calling
+- [x] Video/audio calling (1-on-1 and group calls)
+- [x] Dark mode
+- [x] Redis-backed horizontal scaling
 - [ ] Message reactions (emoji reactions)
 - [ ] Message forwarding
 - [ ] Voice messages
@@ -583,7 +708,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [ ] Story viewer modal
 - [ ] Advanced search filters
 - [ ] Notifications system
-- [ ] Dark mode
 - [ ] Message encryption
 - [ ] GIF support
 - [ ] Message editing and deletion
@@ -593,10 +717,10 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 📊 Statistics
 
-- **Total Lines of Code**: ~10,000+
-- **Components**: 10+
+- **Total Lines of Code**: ~12,000+
+- **Components**: 12+
 - **API Endpoints**: 30+
-- **WebSocket Events**: 12+
+- **WebSocket Events**: 25+ (including calling signaling)
 - **Database Models**: 6
 
 ---

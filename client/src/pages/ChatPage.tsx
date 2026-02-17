@@ -14,6 +14,9 @@ export interface Contact {
   avatar?: string
   isOnline?: boolean
   lastSeen?: Date
+  isGroup?: boolean
+  participants?: { _id: string; name: string; username?: string; avatar?: string }[]
+  groupName?: string
 }
 
 export interface Message {
@@ -49,7 +52,7 @@ const ChatPage = () => {
   }
 
   return (
-    <div className="h-screen flex overflow-hidden bg-gray-100">
+    <div className="h-screen flex overflow-hidden bg-gray-100 dark:bg-gray-900">
       {/* Mobile Menu Button */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}

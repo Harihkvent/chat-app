@@ -13,13 +13,12 @@
   --gray-dark: #111b21;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --gray-light: #1f1f1f;
-    --gray-dark: #f0f2f5;
-  }
+.dark {
+  --background: #111b21;
+  --foreground: #e9edef;
+  --gray-light: #1f2c33;
+  --gray-medium: #8696a0;
+  --gray-dark: #e9edef;
 }
 
 * {

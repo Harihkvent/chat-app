@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
+import { useCall } from '../contexts/CallContext'
 import { Contact, Message } from '../pages/ChatPage'
 import { FiSend, FiPaperclip, FiSmile, FiMoreVertical, FiPhone, FiVideo, FiX, FiFile } from 'react-icons/fi'
 import { format } from 'date-fns'
@@ -15,6 +16,7 @@ interface ChatWindowProps {
 const ChatWindow = ({ activeContact }: ChatWindowProps) => {
   const { user, token } = useAuth()
   const { socket } = useSocket()
+  const { startCall } = useCall()
   const [message, setMessage] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
   const [conversationId, setConversationId] = useState<string | null>(null)
@@ -33,24 +35,24 @@ const ChatWindow = ({ activeContact }: ChatWindowProps) => {
 
     // Listen for incoming messages
     const handleReceiveMessage = (msg: any) => {
-      console.log('Received message:', msg)
       if (msg.conversationId === conversationId) {
         setMessages((prev) => {
-          // Avoid duplicates
-          if (prev.some(m => m._id === msg._id)) return prev
-          return [...prev, msg]
+          const isDuplicate = msg._id
+            ? prev.some(m => m._id === msg._id)
+            : prev.some(m => !m._id && m.content === msg.content && m.from === msg.from)
+          return isDuplicate ? prev : [...prev, msg]
         })
       }
     }
 
     // Listen for message sent confirmation
     const handleMessageSent = (msg: any) => {
-      console.log('Message sent confirmation:', msg)
       setMessages((prev) => {
-        // Replace temporary message with confirmed one
-        const filtered = prev.filter(m => m.timestamp !== msg.timestamp || m._id)
-        if (filtered.some(m => m._id === msg._id)) return filtered
-        return [...filtered, msg]
+        if (prev.some(m => m._id === msg._id)) return prev
+        // Replace the optimistic message (no _id, same content/sender) with the confirmed one
+        const isOptimistic = (m: any) => !m._id && m.content === msg.content && m.from === msg.from
+        const withoutOptimistic = prev.filter(m => !isOptimistic(m))
+        return [...withoutOptimistic, msg]
       })
       setConversationId(msg.conversationId)
     }
@@ -272,15 +274,15 @@ const ChatWindow = ({ activeContact }: ChatWindowProps) => {
 
   if (!activeContact) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-gray-50">
+      <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <div className="w-32 h-32 mx-auto mb-4 bg-gray-200 rounded-full flex items-center justify-center">
-            <FiSend size={48} className="text-gray-400" />
+          <div className="w-32 h-32 mx-auto mb-4 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
+            <FiSend size={48} className="text-gray-400 dark:text-gray-500" />
           </div>
-          <h2 className="text-2xl font-semibold text-gray-700 mb-2">
+          <h2 className="text-2xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
             Welcome to Chat App
           </h2>
-          <p className="text-gray-500">
+          <p className="text-gray-500 dark:text-gray-400">
             Select a contact to start messaging
           </p>
         </div>
@@ -289,9 +291,9 @@ const ChatWindow = ({ activeContact }: ChatWindowProps) => {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[#efeae2]">
+    <div className="flex-1 flex flex-col bg-[#efeae2] dark:bg-gray-900">
       {/* Chat Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center space-x-3">
           <div className="relative">
             <div className="w-10 h-10 bg-gradient-to-br from-whatsapp-green to-whatsapp-teal rounded-full flex items-center justify-center text-white font-bold">
@@ -310,8 +312,8 @@ const ChatWindow = ({ activeContact }: ChatWindowProps) => {
             )}
           </div>
           <div>
-            <h3 className="font-semibold text-gray-800">{activeContact.name}</h3>
-            <p className="text-xs text-gray-600">
+            <h3 className="font-semibold text-gray-800 dark:text-white">{activeContact.name}</h3>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
               {isTyping ? (
                 <span className="text-whatsapp-green animate-pulse">typing...</span>
               ) : activeContact.isOnline ? (
@@ -323,14 +325,42 @@ const ChatWindow = ({ activeContact }: ChatWindowProps) => {
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <button className="p-2 hover:bg-gray-100 rounded-full transition" title="Voice call">
-            <FiPhone size={20} className="text-gray-600" />
+          <button
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition"
+            title="Voice call"
+            onClick={() => {
+              if (!activeContact) return
+              if (activeContact.isGroup && activeContact.participants) {
+                const peers = activeContact.participants
+                  .filter(p => p._id !== user?.id)
+                  .map(p => ({ id: p._id, name: p.name, avatar: p.avatar }))
+                startCall(peers, 'audio', activeContact.groupName || activeContact.name)
+              } else {
+                startCall([{ id: activeContact._id, name: activeContact.name, avatar: activeContact.avatar }], 'audio')
+              }
+            }}
+          >
+            <FiPhone size={20} className="text-gray-600 dark:text-gray-300" />
           </button>
-          <button className="p-2 hover:bg-gray-100 rounded-full transition" title="Video call">
-            <FiVideo size={20} className="text-gray-600" />
+          <button
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition"
+            title="Video call"
+            onClick={() => {
+              if (!activeContact) return
+              if (activeContact.isGroup && activeContact.participants) {
+                const peers = activeContact.participants
+                  .filter(p => p._id !== user?.id)
+                  .map(p => ({ id: p._id, name: p.name, avatar: p.avatar }))
+                startCall(peers, 'video', activeContact.groupName || activeContact.name)
+              } else {
+                startCall([{ id: activeContact._id, name: activeContact.name, avatar: activeContact.avatar }], 'video')
+              }
+            }}
+          >
+            <FiVideo size={20} className="text-gray-600 dark:text-gray-300" />
           </button>
-          <button className="p-2 hover:bg-gray-100 rounded-full transition" title="More options">
-            <FiMoreVertical size={20} className="text-gray-600" />
+          <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition" title="More options">
+            <FiMoreVertical size={20} className="text-gray-600 dark:text-gray-300" />
           </button>
         </div>
       </div>
@@ -339,13 +369,13 @@ const ChatWindow = ({ activeContact }: ChatWindowProps) => {
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
-            <p className="text-gray-500 text-center">
+            <p className="text-gray-500 dark:text-gray-400 text-center">
               Loading messages...
             </p>
           </div>
         ) : messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <p className="text-gray-500 text-center">
+            <p className="text-gray-500 dark:text-gray-400 text-center">
               No messages yet. Start the conversation!
             </p>
           </div>
@@ -361,8 +391,8 @@ const ChatWindow = ({ activeContact }: ChatWindowProps) => {
                 <div
                   className={`max-w-md rounded-lg ${
                     isOwn
-                      ? 'bg-whatsapp-light text-gray-800'
-                      : 'bg-white text-gray-800'
+                      ? 'bg-whatsapp-light dark:bg-whatsapp-dark text-gray-800 dark:text-gray-100'
+                      : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100'
                   } shadow-sm overflow-hidden`}
                 >
                   {/* File content */}
@@ -424,10 +454,10 @@ const ChatWindow = ({ activeContact }: ChatWindowProps) => {
       </div>
 
       {/* Message Input */}
-      <div className="bg-white border-t border-gray-200 px-4 py-3">
+      <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-3">
         {/* File Preview */}
         {selectedFile && (
-          <div className="mb-3 p-3 bg-gray-50 rounded-lg flex items-center justify-between">
+          <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg flex items-center justify-between">
             <div className="flex items-center space-x-3">
               {filePreview ? (
                 <img src={filePreview} alt="Preview" className="w-16 h-16 object-cover rounded" />
@@ -462,7 +492,7 @@ const ChatWindow = ({ activeContact }: ChatWindowProps) => {
               className="p-2 hover:bg-gray-100 rounded-full transition"
               title="Add emoji"
             >
-              <FiSmile size={24} className="text-gray-600" />
+              <FiSmile size={24} className="text-gray-600 dark:text-gray-300" />
             </button>
             {showEmojiPicker && (
               <div className="absolute bottom-12 left-0 z-10">
@@ -483,11 +513,11 @@ const ChatWindow = ({ activeContact }: ChatWindowProps) => {
             className="p-2 hover:bg-gray-100 rounded-full transition"
             title="Attach file"
           >
-            <FiPaperclip size={24} className="text-gray-600" />
+            <FiPaperclip size={24} className="text-gray-600 dark:text-gray-300" />
           </button>
           <div className="flex-1 relative">
             <textarea
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-whatsapp-green resize-none max-h-[120px]"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-whatsapp-green resize-none max-h-[120px]"
               placeholder={selectedFile ? "Add a caption (optional)..." : "Type a message..."}
               value={message}
               onChange={(e) => handleTyping(e.target.value)}

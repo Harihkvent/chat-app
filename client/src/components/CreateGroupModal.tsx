@@ -59,42 +59,42 @@ export default function CreateGroupModal({ contacts, onClose, onGroupCreated }: 
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-full max-w-md mx-4 max-h-[90vh] flex flex-col">
+      <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-md mx-4 max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-semibold">Create Group</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700" title="Close">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Create Group</h2>
+          <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" title="Close">
             <X size={24} />
           </button>
         </div>
 
         {/* Group Name Input */}
-        <div className="p-4 border-b">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <input
             type="text"
             value={groupName}
             onChange={(e) => setGroupName(e.target.value)}
             placeholder="Group name"
-            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-whatsapp-green"
           />
         </div>
 
         {/* Search */}
-        <div className="p-4 border-b">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="relative">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search contacts..."
-              className="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-3 pl-10 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-whatsapp-green"
             />
             <Search className="absolute left-3 top-3.5 text-gray-400" size={20} />
           </div>
         </div>
 
         {/* Selected Members Count */}
-        <div className="px-4 py-2 bg-gray-50 text-sm text-gray-600">
+        <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700 text-sm text-gray-600 dark:text-gray-300">
           {selectedMembers.length} member{selectedMembers.length !== 1 ? "s" : ""} selected
         </div>
 
@@ -104,7 +104,7 @@ export default function CreateGroupModal({ contacts, onClose, onGroupCreated }: 
             <div
               key={contact._id}
               onClick={() => toggleMember(contact._id)}
-              className="flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer"
+              className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
             >
               <div className="flex items-center space-x-3">
                 <img
@@ -113,17 +113,17 @@ export default function CreateGroupModal({ contacts, onClose, onGroupCreated }: 
                   className="w-10 h-10 rounded-full object-cover"
                 />
                 <div>
-                  <p className="font-medium">{contact.name}</p>
+                  <p className="font-medium text-gray-800 dark:text-white">{contact.name}</p>
                   {contact.username && (
-                    <p className="text-sm text-gray-500">@{contact.username}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">@{contact.username}</p>
                   )}
                 </div>
               </div>
               <div
                 className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
                   selectedMembers.includes(contact._id)
-                    ? "bg-blue-600 border-blue-600"
-                    : "border-gray-300"
+                    ? "bg-whatsapp-green border-whatsapp-green"
+                    : "border-gray-300 dark:border-gray-500"
                 }`}
               >
                 {selectedMembers.includes(contact._id) && (
@@ -135,11 +135,11 @@ export default function CreateGroupModal({ contacts, onClose, onGroupCreated }: 
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t">
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
           <button
             onClick={handleCreate}
             disabled={loading || !groupName.trim() || selectedMembers.length < 2}
-            className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 bg-whatsapp-green text-white rounded-lg font-semibold hover:bg-whatsapp-teal disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Creating..." : "Create Group"}
           </button>

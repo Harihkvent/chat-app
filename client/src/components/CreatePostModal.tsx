@@ -19,7 +19,6 @@ export default function CreatePostModal({ onClose, onPostCreated }: CreatePostMo
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    console.log('📁 File selected:', file?.name, 'Type:', file?.type, 'Size:', file?.size);
     if (file) {
       setImageFile(file);
       setImageUrl(""); // Clear URL if file is selected
@@ -27,7 +26,6 @@ export default function CreatePostModal({ onClose, onPostCreated }: CreatePostMo
       // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
-        console.log('🖼️ File preview created');
         setImagePreview(reader.result as string);
       };
       reader.readAsDataURL(file);
@@ -36,14 +34,8 @@ export default function CreatePostModal({ onClose, onPostCreated }: CreatePostMo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('📤 Starting post submission...');
-    console.log('   User:', user?.username, 'ID:', user?._id);
-    console.log('   Caption:', caption);
-    console.log('   Image file:', imageFile?.name);
-    console.log('   Image URL:', imageUrl);
     
     if (!imageFile && !imageUrl.trim()) {
-      console.warn('⚠️ No image provided');
       alert("Please add an image");
       return;
     }
@@ -51,36 +43,26 @@ export default function CreatePostModal({ onClose, onPostCreated }: CreatePostMo
     setLoading(true);
     try {
       if (imageFile) {
-        console.log('📸 Uploading image file...');
         const formData = new FormData();
         formData.append("image", imageFile);
         formData.append("caption", caption.trim());
-        console.log('   FormData keys:', Array.from(formData.keys()));
 
-        const response = await api.post("/api/posts", formData, {
+        await api.post("/api/posts", formData, {
           headers: {
             "Content-Type": "multipart/form-data"
           }
         });
-        console.log('✅ Post created successfully (file):', response.data);
       } else {
-        console.log('🔗 Creating post with URL...');
-        const response = await api.post("/api/posts", {
+        await api.post("/api/posts", {
           caption: caption.trim(),
           imageUrl: imageUrl.trim()
         });
-        console.log('✅ Post created successfully (URL):', response.data);
       }
       
-      console.log('🔄 Calling onPostCreated callback...');
       onPostCreated();
-      console.log('❌ Closing modal...');
       onClose();
     } catch (error: any) {
-      console.error('❌ Error creating post:', error);
-      console.error('   Error response:', error.response?.data);
-      console.error('   Error status:', error.response?.status);
-      console.error('   Error message:', error.message);
+      console.error('Error creating post:', error);
       alert("Failed to create post");
     } finally {
       setLoading(false);
@@ -89,11 +71,11 @@ export default function CreatePostModal({ onClose, onPostCreated }: CreatePostMo
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-full max-w-lg mx-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-lg mx-4">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-semibold">Create new post</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700" aria-label="Close">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Create new post</h2>
+          <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" aria-label="Close">
             <X size={24} />
           </button>
         </div>
@@ -107,7 +89,7 @@ export default function CreatePostModal({ onClose, onPostCreated }: CreatePostMo
               className="w-10 h-10 rounded-full object-cover"
             />
             <div className="flex-1">
-              <p className="font-semibold text-sm">{user?.username || user?.name}</p>
+              <p className="font-semibold text-sm text-gray-800 dark:text-white">{user?.username || user?.name}</p>
             </div>
           </div>
 
@@ -116,14 +98,14 @@ export default function CreatePostModal({ onClose, onPostCreated }: CreatePostMo
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
               placeholder="Write a caption..."
-              className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-whatsapp-green"
               rows={4}
             />
           </div>
 
           <div className="mb-4 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Upload Image from Device
               </label>
               <input
@@ -137,7 +119,7 @@ export default function CreatePostModal({ onClose, onPostCreated }: CreatePostMo
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-gray-600 hover:text-blue-600 font-medium"
+                className="w-full p-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-whatsapp-green hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors text-gray-600 dark:text-gray-300 hover:text-whatsapp-green font-medium"
               >
                 {imageFile ? imageFile.name : "Choose an image file"}
               </button>
@@ -147,12 +129,12 @@ export default function CreatePostModal({ onClose, onPostCreated }: CreatePostMo
               <>
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-px bg-gray-300"></div>
-                  <span className="text-sm text-gray-500">OR</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">OR</span>
                   <div className="flex-1 h-px bg-gray-300"></div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Image URL
                   </label>
                   <input
@@ -163,7 +145,7 @@ export default function CreatePostModal({ onClose, onPostCreated }: CreatePostMo
                       setImagePreview(e.target.value);
                     }}
                     placeholder="https://example.com/image.jpg"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-whatsapp-green"
                   />
                 </div>
               </>
@@ -219,7 +201,7 @@ export default function CreatePostModal({ onClose, onPostCreated }: CreatePostMo
             <button
               type="submit"
               disabled={loading || (!imageFile && !imageUrl.trim())}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-whatsapp-green text-white rounded-lg font-semibold hover:bg-whatsapp-teal disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "Posting..." : "Share"}
             </button>

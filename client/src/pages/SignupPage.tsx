@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google'
 import { useAuth } from '../contexts/AuthContext'
 import { signup as apiSignup, googleAuth } from '../lib/api'
-import { FiUser, FiMail, FiLock, FiPhone, FiMessageCircle } from 'react-icons/fi'
+import { User, Mail, Lock, Phone, MessageCircle } from 'lucide-react'
 
 const SignupPage = () => {
   const navigate = useNavigate()
@@ -81,22 +81,22 @@ const SignupPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-instagram-purple to-instagram-pink p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 my-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-whatsapp-teal to-whatsapp-dark p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md p-8 my-8">
         {/* Header */}
         <div className="text-center mb-6">
           <div className="flex justify-center mb-3">
-            <div className="bg-gradient-to-r from-instagram-purple to-instagram-pink rounded-full p-3">
-              <FiMessageCircle className="text-white text-3xl" />
+            <div className="bg-whatsapp-green rounded-full p-3">
+              <MessageCircle className="text-white" size={28} />
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-1">Create Account</h1>
-          <p className="text-gray-600 text-sm">Join us and start chatting!</p>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-1">Create Account</h1>
+          <p className="text-gray-600 dark:text-gray-400 text-sm">Join us and start chatting!</p>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
+          <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-400 rounded-lg text-sm">
             {error}
           </div>
         )}
@@ -104,13 +104,13 @@ const SignupPage = () => {
         {/* Signup Form */}
         <form onSubmit={handleSignup} className="space-y-3 mb-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
             <div className="relative">
-              <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="text"
                 name="name"
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-instagram-purple focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-whatsapp-green focus:border-transparent"
                 placeholder="John Doe"
                 value={form.name}
                 onChange={handleChange}
@@ -120,13 +120,13 @@ const SignupPage = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
             <div className="relative">
-              <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="text"
                 name="username"
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-instagram-purple focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-whatsapp-green focus:border-transparent"
                 placeholder="johndoe"
                 value={form.username}
                 onChange={handleChange}
@@ -136,13 +136,13 @@ const SignupPage = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
             <div className="relative">
-              <FiMail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="email"
                 name="email"
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-instagram-purple focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-whatsapp-green focus:border-transparent"
                 placeholder="john@example.com"
                 value={form.email}
                 onChange={handleChange}
@@ -152,13 +152,13 @@ const SignupPage = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
             <div className="relative">
-              <FiPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="tel"
                 name="phone"
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-instagram-purple focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-whatsapp-green focus:border-transparent"
                 placeholder="+1234567890"
                 value={form.phone}
                 onChange={handleChange}
@@ -169,11 +169,11 @@ const SignupPage = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date of Birth</label>
               <input
                 type="date"
                 name="dob"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-instagram-purple focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-whatsapp-green focus:border-transparent"
                 value={form.dob}
                 onChange={handleChange}
                 required
@@ -181,10 +181,10 @@ const SignupPage = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Gender</label>
               <select
                 name="gender"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-instagram-purple focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-whatsapp-green focus:border-transparent"
                 value={form.gender}
                 onChange={handleChange}
               >
@@ -196,14 +196,14 @@ const SignupPage = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
             <div className="relative">
-              <FiLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="password"
                 name="password"
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-instagram-purple focus:border-transparent"
-                placeholder="••••••••"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-whatsapp-green focus:border-transparent"
+                placeholder="Enter password"
                 value={form.password}
                 onChange={handleChange}
                 required
@@ -212,14 +212,14 @@ const SignupPage = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm Password</label>
             <div className="relative">
-              <FiLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="password"
                 name="confirmPassword"
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-instagram-purple focus:border-transparent"
-                placeholder="••••••••"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-whatsapp-green focus:border-transparent"
+                placeholder="Confirm password"
                 value={form.confirmPassword}
                 onChange={handleChange}
                 required
@@ -230,7 +230,7 @@ const SignupPage = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-instagram-purple to-instagram-pink text-white py-2 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-whatsapp-green text-white py-2 rounded-lg font-semibold hover:bg-whatsapp-teal transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Creating Account...' : 'Sign Up'}
           </button>
@@ -239,10 +239,10 @@ const SignupPage = () => {
         {/* Divider */}
         <div className="relative mb-4">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300"></div>
+            <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">Or sign up with</span>
+            <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">Or sign up with</span>
           </div>
         </div>
 
@@ -260,9 +260,9 @@ const SignupPage = () => {
 
         {/* Login Link */}
         <div className="text-center">
-          <p className="text-gray-600 text-sm">
+          <p className="text-gray-600 dark:text-gray-400 text-sm">
             Already have an account?{' '}
-            <Link to="/login" className="text-instagram-purple font-semibold hover:underline">
+            <Link to="/login" className="text-whatsapp-green font-semibold hover:underline">
               Sign In
             </Link>
           </p>
