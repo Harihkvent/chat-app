@@ -37,10 +37,10 @@ const ChatWindow = ({ activeContact }: ChatWindowProps) => {
     const handleReceiveMessage = (msg: any) => {
       if (msg.conversationId === conversationId) {
         setMessages((prev) => {
-          // Avoid duplicates by _id or by matching content from same sender without _id
-          if (msg._id && prev.some(m => m._id === msg._id)) return prev
-          if (!msg._id && prev.some(m => !m._id && m.content === msg.content && m.from === msg.from)) return prev
-          return [...prev, msg]
+          const isDuplicate = msg._id
+            ? prev.some(m => m._id === msg._id)
+            : prev.some(m => !m._id && m.content === msg.content && m.from === msg.from)
+          return isDuplicate ? prev : [...prev, msg]
         })
       }
     }
@@ -48,11 +48,11 @@ const ChatWindow = ({ activeContact }: ChatWindowProps) => {
     // Listen for message sent confirmation
     const handleMessageSent = (msg: any) => {
       setMessages((prev) => {
-        // If already present (by _id), skip
         if (prev.some(m => m._id === msg._id)) return prev
-        // Remove the optimistic (temporary) message that has no _id and matching content
-        const filtered = prev.filter(m => m._id || m.content !== msg.content || m.from !== msg.from)
-        return [...filtered, msg]
+        // Replace the optimistic message (no _id, same content/sender) with the confirmed one
+        const isOptimistic = (m: any) => !m._id && m.content === msg.content && m.from === msg.from
+        const withoutOptimistic = prev.filter(m => !isOptimistic(m))
+        return [...withoutOptimistic, msg]
       })
       setConversationId(msg.conversationId)
     }
