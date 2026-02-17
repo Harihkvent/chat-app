@@ -76,7 +76,7 @@ const ChatSidebar = ({
   const displayContacts = searchQuery.trim() ? searchResults : contacts
 
   return (
-    <div className="w-80 lg:w-96 bg-white border-r border-gray-200 flex flex-col h-full">
+    <div className="w-80 lg:w-96 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col h-full">
       {/* Header */}
       <div className="bg-whatsapp-green text-white p-4">
         <div className="flex items-center justify-between mb-4">
@@ -154,8 +154,8 @@ const ChatSidebar = ({
                 setSearchQuery('')
                 setSearchResults([])
               }}
-              className={`flex items-center p-4 cursor-pointer hover:bg-gray-50 transition ${
-                activeContact?._id === contact._id ? 'bg-gray-100' : ''
+              className={`flex items-center p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition ${
+                activeContact?._id === contact._id ? 'bg-gray-100 dark:bg-gray-700' : ''
               }`}
             >
               <div className="relative">
@@ -176,7 +176,7 @@ const ChatSidebar = ({
               </div>
               <div className="ml-3 flex-1 min-w-0">
                 <div className="flex justify-between items-baseline">
-                  <h3 className="font-semibold text-gray-800 truncate">
+                  <h3 className="font-semibold text-gray-800 dark:text-white truncate">
                     {contact.name}
                   </h3>
                   {contact.lastSeen && (
@@ -187,7 +187,7 @@ const ChatSidebar = ({
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-gray-600 truncate">
+                <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
                   @{contact.username}
                 </p>
               </div>

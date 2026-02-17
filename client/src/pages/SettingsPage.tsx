@@ -66,21 +66,21 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-16">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-16">
       <div className="max-w-2xl mx-auto py-8 px-4">
-        <div className="bg-white rounded-lg shadow">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/20">
           {/* Header */}
-          <div className="border-b px-6 py-4 flex items-center space-x-4">
+          <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center space-x-4">
             <button
               type="button"
               onClick={() => navigate("/profile")}
-              className="text-gray-600 hover:text-gray-900"
+              className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
               title="Back to profile"
               aria-label="Back to profile"
             >
               <ArrowLeft size={24} />
             </button>
-            <h1 className="text-xl font-semibold">Edit Profile</h1>
+            <h1 className="text-xl font-semibold text-gray-800 dark:text-white">Edit Profile</h1>
           </div>
 
           {/* Form */}
@@ -96,12 +96,12 @@ export default function SettingsPage() {
                   alt="Avatar"
                   className="w-24 h-24 rounded-full object-cover"
                 />
-                <div className="absolute bottom-0 right-0 bg-blue-600 rounded-full p-2">
+                <div className="absolute bottom-0 right-0 bg-whatsapp-green rounded-full p-2">
                   <Camera size={16} className="text-white" />
                 </div>
               </div>
               <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Avatar URL
                 </label>
                 <input
@@ -109,9 +109,9 @@ export default function SettingsPage() {
                   value={avatar}
                   onChange={handleAvatarChange}
                   placeholder="https://example.com/avatar.jpg"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-whatsapp-green"
                 />
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   Enter a URL for your profile picture
                 </p>
               </div>
@@ -119,7 +119,7 @@ export default function SettingsPage() {
 
             {/* Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Name
               </label>
               <input
@@ -128,14 +128,14 @@ export default function SettingsPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-whatsapp-green"
                 required
               />
             </div>
 
             {/* Username */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Username
               </label>
               <input
@@ -144,14 +144,14 @@ export default function SettingsPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, username: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-whatsapp-green"
                 required
               />
             </div>
 
             {/* Bio */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Bio
               </label>
               <textarea
@@ -160,14 +160,14 @@ export default function SettingsPage() {
                   setFormData({ ...formData, bio: e.target.value })
                 }
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-whatsapp-green"
                 placeholder="Tell us about yourself..."
               />
             </div>
 
             {/* Website */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Website
               </label>
               <input
@@ -176,7 +176,7 @@ export default function SettingsPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, website: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-whatsapp-green"
                 placeholder="https://example.com"
               />
             </div>
@@ -191,9 +191,9 @@ export default function SettingsPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, isPrivate: e.target.checked })
                   }
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-whatsapp-green focus:ring-whatsapp-green border-gray-300 dark:border-gray-600 rounded"
                 />
-                <span className="ml-2 block text-sm text-gray-700">
+                <span className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
                   Private Account
                 </span>
               </label>
@@ -204,8 +204,8 @@ export default function SettingsPage() {
               <div
                 className={`p-3 rounded-md ${
                   message.includes("success")
-                    ? "bg-green-50 text-green-800"
-                    : "bg-red-50 text-red-800"
+                    ? "bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-400"
+                    : "bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-400"
                 }`}
               >
                 {message}
@@ -216,7 +216,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              className="w-full bg-whatsapp-green text-white py-2 px-4 rounded-md hover:bg-whatsapp-teal disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
             >
               {loading ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>

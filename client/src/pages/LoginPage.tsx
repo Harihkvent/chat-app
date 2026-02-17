@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google'
 import { useAuth } from '../contexts/AuthContext'
 import { login as apiLogin, googleAuth } from '../lib/api'
-import { FiMail, FiLock, FiMessageCircle } from 'react-icons/fi'
+import { Mail, Lock, MessageCircle } from 'lucide-react'
 
 const LoginPage = () => {
   const navigate = useNavigate()
@@ -53,21 +53,21 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-whatsapp-teal to-whatsapp-dark p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md p-8">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
             <div className="bg-whatsapp-green rounded-full p-4">
-              <FiMessageCircle className="text-white text-4xl" />
+              <MessageCircle className="text-white" size={32} />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Welcome Back!</h1>
-          <p className="text-gray-600">Sign in to continue chatting</p>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Welcome Back!</h1>
+          <p className="text-gray-600 dark:text-gray-400">Sign in to continue chatting</p>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
+          <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-400 rounded-lg text-sm">
             {error}
           </div>
         )}
@@ -75,14 +75,14 @@ const LoginPage = () => {
         {/* Login Form */}
         <form onSubmit={handleLogin} className="space-y-4 mb-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Username or Email
             </label>
             <div className="relative">
-              <FiMail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="text"
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whatsapp-green focus:border-transparent"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-whatsapp-green focus:border-transparent"
                 placeholder="Enter your username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -92,14 +92,14 @@ const LoginPage = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Password
             </label>
             <div className="relative">
-              <FiLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="password"
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whatsapp-green focus:border-transparent"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-whatsapp-green focus:border-transparent"
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -120,10 +120,10 @@ const LoginPage = () => {
         {/* Divider */}
         <div className="relative mb-6">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300"></div>
+            <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">Or continue with</span>
+            <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">Or continue with</span>
           </div>
         </div>
 
@@ -142,7 +142,7 @@ const LoginPage = () => {
 
         {/* Sign Up Link */}
         <div className="text-center">
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-400">
             Don't have an account?{' '}
             <Link to="/signup" className="text-whatsapp-green font-semibold hover:underline">
               Sign Up
