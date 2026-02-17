@@ -235,12 +235,87 @@ io.on("connection", (socket) => {
     console.log(`User ${data.userId} left group ${data.conversationId}`);
   });
 
+  // --- WebRTC Signaling for Video/Audio Calls ---
+
+  // Initiate a call (send offer to recipient)
+  socket.on("callUser", (data: {
+    from: string;
+    to: string;
+    offer: RTCSessionDescriptionInit;
+    callerName: string;
+    callerAvatar?: string;
+    callType: "audio" | "video";
+  }) => {
+    const recipientSocketId = userSockets.get(data.to);
+    if (recipientSocketId) {
+      io.to(recipientSocketId).emit("incomingCall", {
+        from: data.from,
+        offer: data.offer,
+        callerName: data.callerName,
+        callerAvatar: data.callerAvatar,
+        callType: data.callType,
+      });
+      console.log(`📞 Call from ${data.from} to ${data.to} (${data.callType})`);
+    } else {
+      // Recipient is offline
+      socket.emit("callUnavailable", { to: data.to, reason: "User is offline" });
+    }
+  });
+
+  // Accept a call (send answer back to caller)
+  socket.on("answerCall", (data: {
+    to: string;
+    answer: RTCSessionDescriptionInit;
+  }) => {
+    const callerSocketId = userSockets.get(data.to);
+    if (callerSocketId) {
+      io.to(callerSocketId).emit("callAnswered", {
+        answer: data.answer,
+      });
+      console.log(`✅ Call answered, sending answer to ${data.to}`);
+    }
+  });
+
+  // Exchange ICE candidates
+  socket.on("iceCandidate", (data: {
+    to: string;
+    candidate: RTCIceCandidateInit;
+  }) => {
+    const recipientSocketId = userSockets.get(data.to);
+    if (recipientSocketId) {
+      io.to(recipientSocketId).emit("iceCandidate", {
+        candidate: data.candidate,
+      });
+    }
+  });
+
+  // End a call
+  socket.on("endCall", (data: { to: string }) => {
+    const recipientSocketId = userSockets.get(data.to);
+    if (recipientSocketId) {
+      io.to(recipientSocketId).emit("callEnded");
+      console.log(`📵 Call ended with ${data.to}`);
+    }
+  });
+
+  // Reject a call
+  socket.on("rejectCall", (data: { to: string }) => {
+    const callerSocketId = userSockets.get(data.to);
+    if (callerSocketId) {
+      io.to(callerSocketId).emit("callRejected");
+      console.log(`❌ Call rejected by user, notifying ${data.to}`);
+    }
+  });
+
   socket.on("disconnect", async () => {
     console.log("🔴 Client disconnected:", socket.id);
     // Find user by socket ID and set offline
     for (const [userId, socketId] of userSockets.entries()) {
       if (socketId === socket.id) {
         try {
+          // Notify any active call peers that this user disconnected
+          socket.broadcast.emit("callEnded");
+
           await User.findByIdAndUpdate(userId, { isOnline: false, lastSeen: new Date() });
           socket.broadcast.emit("userStatusChange", { userId, isOnline: false });
           userSockets.delete(userId);
