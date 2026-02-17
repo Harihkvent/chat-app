@@ -93,6 +93,8 @@ A modern, feature-rich social media and real-time messaging application built wi
 - **Express.js 5** - Web framework
 - **Socket.io** - WebSocket server
 - **MongoDB** with Mongoose - Database
+- **Redis** + **@socket.io/redis-adapter** - Horizontal scaling (optional)
+- **ioredis** - Redis client
 - **JWT** - Token-based authentication
 - **bcryptjs** - Password hashing
 - **Multer** - File upload handling
@@ -110,6 +112,7 @@ Before you begin, ensure you have installed:
 - **Node.js** 18.x or higher
 - **MongoDB** (local installation or Atlas cloud)
 - **npm** or **yarn**
+- **Redis** (optional — only needed for running multiple server instances)
 - **Google OAuth credentials** (optional, for Google Sign-in)
 
 ## 🚀 Quick Start
@@ -139,6 +142,28 @@ mongod
 2. Create a cluster and get your connection string
 3. Whitelist your IP address
 
+### 2b. Redis Setup (Optional — for Horizontal Scaling)
+
+Redis is **only needed** when running multiple server instances behind a load balancer. When `REDIS_URL` is not set, the server uses in-memory state and works perfectly in single-instance mode.
+
+**Option A: Using Docker**
+```bash
+docker run -d --name redis -p 6379:6379 redis:7-alpine
+```
+
+**Option B: Local Redis**
+```bash
+# macOS
+brew install redis && redis-server
+
+# Ubuntu/Debian
+sudo apt-get install redis-server && sudo systemctl start redis
+```
+
+**Option C: Cloud Redis (Redis Cloud, AWS ElastiCache, Upstash)**
+1. Create a Redis instance on your preferred cloud provider
+2. Use the provided connection URL in `REDIS_URL`
+
 ### 3. Google OAuth Setup (Optional)
 
 1. Visit [Google Cloud Console](https://console.cloud.google.com/)
@@ -163,6 +188,9 @@ MONGO_URI=mongodb://localhost:27017/chatapp
 
 JWT_SECRET=your_super_secret_jwt_key_change_this_in_production
 GOOGLE_CLIENT_ID=your_google_client_id_here  # Optional
+
+# Redis (optional — for horizontal scaling with multiple server instances)
+# REDIS_URL=redis://localhost:6379
 ```
 
 **Frontend Configuration**
@@ -282,6 +310,7 @@ chat-app/
 │   │   ├── contexts/               # React context providers
 │   │   │   ├── AuthContext.tsx     # Authentication state
 │   │   │   ├── CallContext.tsx     # WebRTC call state & peer connections
+│   │   │   ├── ThemeContext.tsx    # Dark/light mode theme state
 │   │   │   └── SocketContext.tsx   # Socket.io connection
 │   │   ├── lib/
 │   │   │   └── api.ts              # Axios API client
@@ -317,6 +346,7 @@ chat-app/
 │   │   │   ├── posts.ts            # Post routes
 │   │   │   ├── stories.ts          # Story routes
 │   │   │   └── users.ts            # User routes
+│   │   ├── store.ts                # Redis/in-memory shared state (user sockets, call rooms)
 │   │   └── index.ts                # Server entry & Socket.io
 │   ├── uploads/                    # File uploads directory
 │   │   └── chats/                  # Chat media
@@ -577,6 +607,7 @@ lsof -ti:5173 | xargs kill -9
    - `JWT_SECRET` - Secret key for JWT
    - `PORT` - Port number (usually auto-set)
    - `GOOGLE_CLIENT_ID` - Optional
+   - `REDIS_URL` - Redis connection string (required when running multiple instances)
 
 3. **Deploy**:
    - Start command: `npm start`
@@ -607,6 +638,7 @@ lsof -ti:5173 | xargs kill -9
 - Enable HTTPS for production (required for WebRTC camera/microphone access)
 - Set appropriate JWT_SECRET (strong, random string)
 - For video/audio calls behind strict NATs, consider adding a TURN server to the ICE configuration
+- **For horizontal scaling**: Set `REDIS_URL` to enable the Socket.io Redis adapter and shared state — this allows running multiple server instances behind a load balancer (e.g., Nginx, AWS ALB) with sticky sessions
 
 ## 📚 Additional Documentation
 
@@ -658,6 +690,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - **React Team** - Amazing frontend library
 - **Vite** - Lightning-fast build tool
 - **MongoDB** - Flexible NoSQL database
+- **Redis** - In-memory data structure store for scaling
 - **Tailwind CSS** - Utility-first CSS framework
 - **Google** - OAuth 2.0 authentication
 - **Lucide** - Beautiful icon library
@@ -666,6 +699,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ### Coming Soon
 - [x] Video/audio calling (1-on-1 and group calls)
+- [x] Dark mode
+- [x] Redis-backed horizontal scaling
 - [ ] Message reactions (emoji reactions)
 - [ ] Message forwarding
 - [ ] Voice messages
@@ -673,7 +708,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [ ] Story viewer modal
 - [ ] Advanced search filters
 - [ ] Notifications system
-- [ ] Dark mode
 - [ ] Message encryption
 - [ ] GIF support
 - [ ] Message editing and deletion
