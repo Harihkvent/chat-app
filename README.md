@@ -651,29 +651,21 @@ For more detailed information, check out:
 
 ## 🤝 Contributing
 
-Contributions are welcome! Here's how you can help:
+Contributions are welcome! Please read our **[Contributing Guide](CONTRIBUTING.md)** for detailed instructions on:
 
-1. **Fork the Repository**
-2. **Create a Feature Branch**
-   ```bash
-   git checkout -b feature/AmazingFeature
-   ```
-3. **Commit Your Changes**
-   ```bash
-   git commit -m 'Add some AmazingFeature'
-   ```
-4. **Push to Branch**
-   ```bash
-   git push origin feature/AmazingFeature
-   ```
-5. **Open a Pull Request**
+- How to set up the development environment
+- What features and bugs you can work on
+- How to raise a pull request
+- Coding guidelines and commit message conventions
+- The review process
 
-### Contribution Guidelines
-- Follow existing code style and patterns
-- Write clear commit messages
-- Test your changes thoroughly
-- Update documentation as needed
-- Keep pull requests focused on a single feature/fix
+**Quick start:**
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'feat: add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ## 📝 License
 
