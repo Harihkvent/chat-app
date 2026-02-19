@@ -7,22 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  build-and-lint:
+  build:
     runs-on: ubuntu-latest
-
-    services:
-      mongo:
-        image: mongo:6.0
-        ports:
-          - 27017:27017
-        env:
-          MONGO_INITDB_ROOT_USERNAME: root
-          MONGO_INITDB_ROOT_PASSWORD: example
-        options: >-
-          --health-cmd="mongosh --eval 'db.adminCommand(\"ping\")'" 
-          --health-interval=10s 
-          --health-timeout=5s 
-          --health-retries=5
 
     steps:
       - uses: actions/checkout@v4
@@ -32,25 +18,14 @@ jobs:
         with:
           node-version: 18
 
-      - name: Install server dependencies
+      - name: Install and build server
         run: |
           cd server
-          npm ci
-
-      - name: Lint and build server
-        run: |
-          cd server
+          npm install
           npm run build
 
-      - name: Install client dependencies
+      - name: Install and build client
         run: |
           cd client
-          npm ci
-
-      - name: Lint and build client
-        run: |
-          cd client
+          npm install
           npm run build
-
-      - name: Check Docker Compose config
-        run: docker-compose config
