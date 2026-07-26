@@ -104,12 +104,12 @@ A modern, feature-rich social media and real-time messaging application built wi
 - **TypeScript** - Type safety
 - **ESLint** - Code linting
 - **ts-node-dev** - Development server
-- **Docker Compose** - MongoDB containerization
+- **Docker Compose** - Local MongoDB + Redis services
 
 ## 📋 Prerequisites
 
 Before you begin, ensure you have installed:
-- **Node.js** 18.x or higher
+- **Node.js** 20.x or higher
 - **MongoDB** (local installation or Atlas cloud)
 - **npm** or **yarn**
 - **Redis** (optional — only needed for running multiple server instances)
@@ -129,7 +129,7 @@ cd chat-app
 ```bash
 docker-compose up -d
 ```
-This starts MongoDB on `localhost:27017` with default credentials.
+This starts MongoDB on `localhost:27017` (and Redis on `localhost:6379`) with default credentials.
 
 **Option B: Local MongoDB**
 ```bash
@@ -181,7 +181,7 @@ sudo apt-get install redis-server && sudo systemctl start redis
 
 Create `server/.env`:
 ```env
-PORT=4000
+PORT=4000 
 MONGO_URI=mongodb://localhost:27017/chatapp
 # For Docker: mongodb://root:example@localhost:27017/chatapp?authSource=admin
 # For Atlas: your_mongodb_atlas_connection_string
@@ -319,6 +319,7 @@ chat-app/
 │   │   │   ├── FeedPage.tsx        # Social feed
 │   │   │   ├── LoginPage.tsx       # Login UI
 │   │   │   ├── ProfilePage.tsx     # User profiles
+│   │   │   ├── SettingsPage.tsx    # Profile/account settings
 │   │   │   └── SignupPage.tsx      # Registration UI
 │   │   ├── styles/
 │   │   │   └── index.css           # Global styles
@@ -348,13 +349,15 @@ chat-app/
 │   │   │   └── users.ts            # User routes
 │   │   ├── store.ts                # Redis/in-memory shared state (user sockets, call rooms)
 │   │   └── index.ts                # Server entry & Socket.io
-│   ├── uploads/                    # File uploads directory
-│   │   └── chats/                  # Chat media
 │   ├── tsconfig.json
 │   └── package.json
 │
+├── uploads/                        # Runtime uploads directory
+│   └── chats/                      # Chat media
+│
 ├── docs/                           # Documentation
 │   ├── COMPLETION_SUMMARY.md
+│   ├── DEMO.md
 │   ├── FEATURES.md
 │   ├── IMPLEMENTATION_SUMMARY.md
 │   ├── NEW_FEATURES.md
@@ -362,7 +365,7 @@ chat-app/
 │   ├── SETUP_GUIDE.md
 │   └── TESTING_CHECKLIST.md
 │
-├── docker-compose.yml              # MongoDB container
+├── docker-compose.yml              # Local MongoDB + Redis services
 ├── client_secret_*.json            # Google OAuth credentials
 └── README.md
 ```
@@ -382,10 +385,11 @@ chat-app/
 | GET | `/api/users/contacts` | Get all users (contacts) | Yes |
 | GET | `/api/users/search?q=query` | Search users | Yes |
 | GET | `/api/users/:userId` | Get user profile | Yes |
-| POST | `/api/users/:id/follow` | Follow user | Yes |
-| DELETE | `/api/users/:id/follow` | Unfollow user | Yes |
-| GET | `/api/users/:id/followers` | Get followers list | Yes |
-| GET | `/api/users/:id/following` | Get following list | Yes |
+| PATCH | `/api/users/profile` | Update current user profile | Yes |
+| POST | `/api/users/:userId/follow` | Follow user | Yes |
+| DELETE | `/api/users/:userId/follow` | Unfollow user | Yes |
+| GET | `/api/users/:userId/followers` | Get followers list | Yes |
+| GET | `/api/users/:userId/following` | Get following list | Yes |
 
 ### Chat Endpoints
 | Method | Endpoint | Description | Auth Required |
@@ -395,10 +399,10 @@ chat-app/
 | GET | `/api/chats/messages/:conversationId` | Get messages | Yes |
 | POST | `/api/chats/messages` | Send message | Yes |
 | POST | `/api/chats/groups` | Create group chat | Yes |
-| POST | `/api/chats/groups/:id/members` | Add members to group | Yes |
-| DELETE | `/api/chats/groups/:id/members/:memberId` | Remove member | Yes |
-| POST | `/api/chats/groups/:id/admins/:memberId` | Make member admin | Yes |
-| PATCH | `/api/chats/groups/:id` | Update group info | Yes |
+| POST | `/api/chats/groups/:conversationId/members` | Add members to group | Yes |
+| DELETE | `/api/chats/groups/:conversationId/members/:memberId` | Remove member | Yes |
+| POST | `/api/chats/groups/:conversationId/admins/:memberId` | Make member admin | Yes |
+| PATCH | `/api/chats/groups/:conversationId` | Update group info | Yes |
 
 ### Post Endpoints
 | Method | Endpoint | Description | Auth Required |
@@ -417,9 +421,14 @@ chat-app/
 | GET | `/api/stories` | Get stories from followed users | Yes |
 | GET | `/api/stories/my-stories` | Get own stories | Yes |
 | POST | `/api/stories` | Create story | Yes |
-| POST | `/api/stories/:id/view` | Mark story as viewed | Yes |
-| GET | `/api/stories/:id/viewers` | Get story viewers | Yes |
-| DELETE | `/api/stories/:id` | Delete story | Yes |
+| POST | `/api/stories/:storyId/view` | Mark story as viewed | Yes |
+| GET | `/api/stories/:storyId/viewers` | Get story viewers | Yes |
+| DELETE | `/api/stories/:storyId` | Delete story | Yes |
+
+### Health Endpoint
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/health` | Service health check | No |
 
 ### WebSocket Events
 
@@ -428,9 +437,9 @@ chat-app/
 - `userOffline` - User goes offline  
 - `sendMessage` - Send a chat message
 - `typing` - User is typing
-- `stopTyping` - User stopped typing
 - `markAsRead` - Mark message as read
-- `joinRoom` - Join conversation room
+- `joinGroup` - Join a group conversation room
+- `leaveGroup` - Leave a group conversation room
 
 **Server → Client Events (Messaging):**
 - `receiveMessage` - Receive new message
@@ -438,7 +447,6 @@ chat-app/
 - `userStatusChange` - User online/offline status change
 - `userTyping` - User typing indicator
 - `messageRead` - Message read receipt
-- `messageDelivered` - Message delivered status
 
 **Client → Server Events (Calling):**
 - `startCall` - Create a call room and invite participants
@@ -557,7 +565,7 @@ lsof -ti:5173 | xargs kill -9
 **Solutions**:
 - Delete `node_modules` and `package-lock.json`
 - Run `npm install` again
-- Ensure Node.js version is 18.x or higher: `node --version`
+- Ensure Node.js version is 20.x or higher: `node --version`
 - Clear npm cache: `npm cache clean --force`
 - Try using `npm ci` instead of `npm install`
 

@@ -7,7 +7,11 @@ const storySchema = new mongoose.Schema({
   caption: { type: String },
   viewers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   viewersCount: { type: Number, default: 0 },
-  expiresAt: { type: Date, required: true }
+  expiresAt: {
+    type: Date,
+    required: true,
+    default: () => new Date(Date.now() + 24 * 60 * 60 * 1000)
+  }
 }, {
   timestamps: true
 });

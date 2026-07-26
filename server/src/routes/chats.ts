@@ -92,6 +92,15 @@ router.post("/conversations", async (req: Request, res: Response): Promise<void>
       return;
     }
 
+    const User = mongoose.model("User");
+    const currentUser = await User.findById(userId);
+    const targetUser = await User.findById(participantId);
+
+    if (currentUser?.blockedUsers?.includes(participantId) || targetUser?.blockedUsers?.includes(userId)) {
+      res.status(403).json({ error: "Cannot start chat with a blocked user" });
+      return;
+    }
+
     // Check if conversation already exists
     let conversation = await Conversation.findOne({
       isGroup: false,

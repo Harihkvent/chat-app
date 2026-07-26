@@ -7,8 +7,6 @@ import Redis from "ioredis";
  * Redis is used when the REDIS_URL environment variable is set.
  */
 
-const REDIS_URL = process.env.REDIS_URL;
-
 // TTL for user socket entries (auto-expire stale entries after 24h)
 const USER_SOCKET_TTL = 86400;
 // TTL for call room entries (auto-expire stale rooms after 1h)
@@ -26,13 +24,14 @@ export function getRedisClient(): Redis | null {
 }
 
 export async function initRedis(): Promise<Redis | null> {
-  if (!REDIS_URL) {
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl) {
     console.log("ℹ️  REDIS_URL not set — using in-memory state (single-instance mode)");
     return null;
   }
 
   try {
-    redis = new Redis(REDIS_URL, {
+    redis = new Redis(redisUrl, {
       maxRetriesPerRequest: 3,
       retryStrategy(times) {
         const delay = Math.min(times * 200, 5000);

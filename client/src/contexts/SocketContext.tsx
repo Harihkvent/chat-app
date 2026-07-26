@@ -17,13 +17,19 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (token && user) {
+      const userId = user._id || user.id
+      if (!userId) return
+
       // Prevent duplicate connections
       if (socketRef.current?.connected) {
         console.log('Socket already connected, reusing existing connection')
         return
       }
 
-      const socketUrl = import.meta.env.VITE_WS_URL || 'http://localhost:4000'
+      const envWsUrl = import.meta.env.VITE_WS_URL
+      const socketUrl = (envWsUrl && !envWsUrl.includes('localhost'))
+        ? envWsUrl
+        : `http://${window.location.hostname}:4000`
       const newSocket = io(socketUrl, {
         auth: {
           token,
@@ -39,7 +45,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         console.log('🟢 Socket connected:', newSocket.id)
         setIsConnected(true)
         // Join user's room
-        newSocket.emit('userOnline', user.id)
+        newSocket.emit('userOnline', userId)
       })
 
       newSocket.on('disconnect', (reason) => {
@@ -56,14 +62,14 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         console.log('🔄 Socket reconnected after', attemptNumber, 'attempts')
         setIsConnected(true)
         // Re-announce online status
-        newSocket.emit('userOnline', user.id)
+        newSocket.emit('userOnline', userId)
       })
 
       setSocket(newSocket)
 
       return () => {
         if (socketRef.current) {
-          socketRef.current.emit('userOffline', user.id)
+          socketRef.current.emit('userOffline', userId)
           socketRef.current.disconnect()
           socketRef.current = null
         }
@@ -77,7 +83,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         setIsConnected(false)
       }
     }
-  }, [token, user?.id])
+  }, [token, user?._id, user?.id])
 
   return (
     <SocketContext.Provider value={{ socket, isConnected }}>

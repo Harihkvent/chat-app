@@ -108,10 +108,33 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
   }, [socket, user])
 
   const getMediaStream = useCallback(async (type: CallType): Promise<MediaStream> => {
-    return navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video: type === 'video',
-    })
+    try {
+      if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+        return await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: type === 'video',
+        })
+      }
+    } catch (err) {
+      console.warn('Hardware media stream restricted (e.g. mobile HTTP origin or denied permission). Falling back to synthetic stream for testing:', err)
+    }
+
+    // Fallback: Create synthetic silent audio track for local HTTP testing
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+      if (AudioCtx) {
+        const audioCtx = new AudioCtx()
+        const osc = audioCtx.createOscillator()
+        const dst = audioCtx.createMediaStreamDestination()
+        osc.connect(dst)
+        osc.start()
+        return dst.stream
+      }
+    } catch (e) {
+      console.error('Failed to create fallback audio stream:', e)
+    }
+
+    return new MediaStream()
   }, [])
 
   const createPeerConnection = useCallback((peerId: string, peerName: string, peerAvatar?: string) => {
@@ -124,11 +147,12 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     const pc = new RTCPeerConnection(ICE_SERVERS)
 
     pc.onicecandidate = (event) => {
-      if (event.candidate && socket && roomIdRef.current && user) {
+      const currentUserId = user ? (user._id || user.id) : null
+      if (event.candidate && socket && roomIdRef.current && currentUserId) {
         socket.emit('iceCandidate', {
           roomId: roomIdRef.current,
           to: peerId,
-          from: user.id,
+          from: currentUserId,
           candidate: event.candidate.toJSON(),
         })
       }
@@ -137,8 +161,24 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     pc.ontrack = (event) => {
       setRemoteStreams(prev => {
         const updated = new Map(prev)
+        const existing = updated.get(peerId)
+
+        let targetStream: MediaStream
+        if (existing && existing.stream) {
+          targetStream = existing.stream
+          if (!targetStream.getTracks().some(t => t.id === event.track.id)) {
+            targetStream.addTrack(event.track)
+          }
+        } else {
+          if (event.streams && event.streams[0]) {
+            targetStream = event.streams[0]
+          } else {
+            targetStream = new MediaStream([event.track])
+          }
+        }
+
         updated.set(peerId, {
-          stream: event.streams[0],
+          stream: targetStream,
           name: peerName,
           avatar: peerAvatar,
         })
@@ -192,12 +232,13 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
   // Start a call (1-on-1 or group)
   const startCall = useCallback((participants: CallPeer[], type: CallType, groupName?: string) => {
     if (!socket || !user || callStatusRef.current !== 'idle') return
+    const currentUserId = user._id || user.id
 
-    const roomId = `${user.id}-${Date.now()}`
+    const roomId = `${currentUserId}-${Date.now()}`
     roomIdRef.current = roomId
 
     setCallType(type)
-    setCallInfo({ roomId, callerId: user.id, callerName: user.name, callerAvatar: user.avatar, groupName })
+    setCallInfo({ roomId, callerId: currentUserId, callerName: user.name, callerAvatar: user.avatar, groupName })
     setCallStatus('outgoing')
 
     getMediaStream(type).then((stream) => {
@@ -207,7 +248,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       // Emit startCall to server which invites all participants
       socket.emit('startCall', {
         roomId,
-        from: user.id,
+        from: currentUserId,
         participants: participants.map(p => p.id),
         callerName: user.name,
         callerAvatar: user.avatar,
@@ -218,7 +259,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       // Caller also joins the call room
       socket.emit('joinCallRoom', {
         roomId,
-        userId: user.id,
+        userId: currentUserId,
         userName: user.name,
         userAvatar: user.avatar,
       })
@@ -231,6 +272,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
   // Accept an incoming call
   const acceptCall = useCallback(() => {
     if (!socket || !user || !callInfo) return
+    const currentUserId = user._id || user.id
 
     setCallStatus('active')
 
@@ -238,29 +280,25 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       localStreamRef.current = stream
       setLocalStream(stream)
 
-      // Start duration timer
-      durationIntervalRef.current = setInterval(() => {
-        setCallDuration(prev => prev + 1)
-      }, 1000)
-
-      // Join the call room — server will tell us about existing peers
+      // Join the call room
       socket.emit('joinCallRoom', {
         roomId: callInfo.roomId,
-        userId: user.id,
+        userId: currentUserId,
         userName: user.name,
         userAvatar: user.avatar,
       })
     }).catch((err) => {
-      console.error('Error getting media stream:', err)
+      console.error('Error getting media stream on accept:', err)
       cleanup()
     })
   }, [socket, user, callInfo, getMediaStream, cleanup])
 
   const rejectCall = useCallback(() => {
     if (!socket || !callInfo || !user) return
+    const currentUserId = user._id || user.id
     socket.emit('rejectCall', {
       roomId: callInfo.roomId,
-      userId: user.id,
+      userId: currentUserId,
       to: callInfo.callerId,
     })
     cleanup()

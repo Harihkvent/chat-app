@@ -4,6 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { Home, Search, PlusSquare, MessageCircle, User, LogOut, Sun, Moon } from "lucide-react";
 import CreatePostModal from "./CreatePostModal";
+import { searchUsers } from "../lib/api";
 
 export default function Navigation() {
   const { user, logout } = useAuth();
@@ -11,6 +12,22 @@ export default function Navigation() {
   const navigate = useNavigate();
   const location = useLocation();
   const [showCreatePost, setShowCreatePost] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    try {
+      const res = await searchUsers(query);
+      setSearchResults(res.data || []);
+    } catch (err) {
+      console.error("Search error:", err);
+    }
+  };
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -30,15 +47,48 @@ export default function Navigation() {
             </Link>
 
             {/* Search Bar */}
-            <div className="hidden md:block flex-1 max-w-xs mx-8">
+            <div className="hidden md:block flex-1 max-w-xs mx-8 relative">
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Search..."
-                  className="w-full px-4 py-2 pl-10 bg-gray-100 dark:bg-gray-800 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-whatsapp-green"
+                  placeholder="Search users..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="w-full px-4 py-2 pl-10 bg-gray-100 dark:bg-gray-800 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-whatsapp-green text-sm"
                 />
-                <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
+                <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
               </div>
+
+              {/* Search Results Dropdown */}
+              {searchQuery.trim() !== '' && (
+                <div className="absolute left-0 right-0 top-12 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 max-h-80 overflow-y-auto z-50 p-2">
+                  {searchResults.length === 0 ? (
+                    <p className="p-3 text-xs text-gray-500 text-center">No users found</p>
+                  ) : (
+                    searchResults.map((u: any) => (
+                      <div
+                        key={u._id}
+                        onClick={() => {
+                          navigate(`/profile/${u._id}`);
+                          setSearchQuery('');
+                          setSearchResults([]);
+                        }}
+                        className="flex items-center space-x-3 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg cursor-pointer transition"
+                      >
+                        <img
+                          src={u.avatar || `https://ui-avatars.com/api/?name=${u.name}`}
+                          alt={u.name}
+                          className="w-8 h-8 rounded-full object-cover"
+                        />
+                        <div className="overflow-hidden">
+                          <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">{u.name}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">@{u.username || u.email}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Navigation Icons */}

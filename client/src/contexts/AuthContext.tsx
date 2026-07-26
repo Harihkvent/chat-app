@@ -25,6 +25,16 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+const normalizeUser = (u: any): User => {
+  if (!u) return u
+  const id = u._id || u.id
+  return {
+    ...u,
+    id,
+    _id: id,
+  }
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(null)
@@ -41,7 +51,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Check if token is expired
         if (decoded.exp * 1000 > Date.now()) {
           setToken(storedToken)
-          setUser(JSON.parse(storedUser))
+          setUser(normalizeUser(JSON.parse(storedUser)))
           console.log('✅ User session restored from localStorage')
         } else {
           // Token expired, clear storage
@@ -59,10 +69,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   const login = (newToken: string, newUser: User) => {
+    const normalized = normalizeUser(newUser)
     setToken(newToken)
-    setUser(newUser)
+    setUser(normalized)
     localStorage.setItem('token', newToken)
-    localStorage.setItem('user', JSON.stringify(newUser))
+    localStorage.setItem('user', JSON.stringify(normalized))
   }
 
   const logout = () => {

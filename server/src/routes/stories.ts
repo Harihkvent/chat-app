@@ -67,16 +67,48 @@ router.get("/my-stories", authenticateToken, async (req: Request, res: Response)
   }
 });
 
+import path from "path";
+import fs from "fs";
+import multer from "multer";
+
+const uploadDir = path.join(__dirname, "../../uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
+
 // Create story
-router.post("/", authenticateToken, async (req: Request, res: Response) => {
+router.post("/", authenticateToken, upload.single("image"), async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.userId;
     const { mediaUrl, mediaType, caption } = req.body;
 
+    let finalMediaUrl = mediaUrl;
+    if (req.file) {
+      finalMediaUrl = `/uploads/${req.file.filename}`;
+    }
+
+    if (!finalMediaUrl) {
+      res.status(400).json({ error: "Media file or mediaUrl is required" });
+      return;
+    }
+
     const story = await Story.create({
       user: userId,
-      mediaUrl,
-      mediaType,
+      mediaUrl: finalMediaUrl,
+      mediaType: mediaType || "image",
       caption
     });
 

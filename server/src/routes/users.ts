@@ -22,14 +22,28 @@ router.use((req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// Get contacts (all users except current user)
+// Get contacts (all users except current user and blocked users)
 router.get("/contacts", async (req: Request, res: Response): Promise<void> => {
-  const userId = (req as any).userId;
-  const users = await User.find(
-    { _id: { $ne: userId } },
-    "username name email avatar isOnline lastSeen _id"
-  );
-  res.json(users);
+  try {
+    const userId = (req as any).userId;
+    const currentUser = await User.findById(userId);
+    const blockedByMe = currentUser?.blockedUsers || [];
+    
+    // Find users who have blocked current user
+    const usersWhoBlockedMe = await User.find({ blockedUsers: userId }).select("_id");
+    const blockedMeIds = usersWhoBlockedMe.map(u => u._id);
+
+    const excludeIds = [userId, ...blockedByMe, ...blockedMeIds];
+
+    const users = await User.find(
+      { _id: { $nin: excludeIds } },
+      "username name email avatar isOnline lastSeen _id"
+    );
+    res.json(users);
+  } catch (err) {
+    console.error("Contacts error:", err);
+    res.status(500).json({ error: "Failed to fetch contacts" });
+  }
 });
 
 // Search users
@@ -43,9 +57,16 @@ router.get("/search", async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    const currentUser = await User.findById(userId);
+    const blockedByMe = currentUser?.blockedUsers || [];
+    const usersWhoBlockedMe = await User.find({ blockedUsers: userId }).select("_id");
+    const blockedMeIds = usersWhoBlockedMe.map(u => u._id);
+
+    const excludeIds = [userId, ...blockedByMe, ...blockedMeIds];
+
     const users = await User.find(
       {
-        _id: { $ne: userId },
+        _id: { $nin: excludeIds },
         $or: [
           { name: { $regex: query, $options: "i" } },
           { username: { $regex: query, $options: "i" } },
@@ -59,6 +80,73 @@ router.get("/search", async (req: Request, res: Response): Promise<void> => {
   } catch (err) {
     console.error("Search error:", err);
     res.status(500).json({ error: "Search failed" });
+  }
+});
+
+// Get blocked users
+router.get("/blocked", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).userId;
+    const user = await User.findById(userId).populate("blockedUsers", "name username avatar _id");
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    res.json(user.blockedUsers || []);
+  } catch (err) {
+    console.error("Get blocked users error:", err);
+    res.status(500).json({ error: "Failed to fetch blocked users" });
+  }
+});
+
+// Get saved posts
+router.get("/saved-posts", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const currentUserId = (req as any).userId;
+    const user = await User.findById(currentUserId).populate({
+      path: "savedPosts",
+      populate: { path: "user", select: "name username avatar" }
+    });
+
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    res.json(user.savedPosts || []);
+  } catch (err) {
+    console.error("Get saved posts error:", err);
+    res.status(500).json({ error: "Failed to get saved posts" });
+  }
+});
+
+// Toggle save post
+router.post("/posts/:postId/save", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const currentUserId = (req as any).userId;
+    const { postId } = req.params;
+
+    const user = await User.findById(currentUserId);
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    const savedIndex = user.savedPosts?.indexOf(postId as any) ?? -1;
+    const isSaved = savedIndex > -1;
+
+    if (isSaved) {
+      user.savedPosts.splice(savedIndex, 1);
+    } else {
+      if (!user.savedPosts) user.savedPosts = [];
+      user.savedPosts.push(postId as any);
+    }
+
+    await user.save();
+    res.json({ saved: !isSaved, savedPosts: user.savedPosts });
+  } catch (err) {
+    console.error("Save post error:", err);
+    res.status(500).json({ error: "Failed to save post" });
   }
 });
 
@@ -84,12 +172,15 @@ router.get("/:userId", async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Check if current user follows this user
     const currentUser = await User.findById(currentUserId);
-    const isFollowing = currentUser?.following?.includes(req.params.userId as any) || false;
-    const isFollower = currentUser?.followers?.includes(req.params.userId as any) || false;
+    const targetUser = await User.findById(userId);
 
-    res.json({ ...user, isFollowing, isFollower });
+    const isFollowing = currentUser?.following?.some((id: any) => id.toString() === userId) || false;
+    const isFollower = currentUser?.followers?.some((id: any) => id.toString() === userId) || false;
+    const isBlocked = currentUser?.blockedUsers?.some((id: any) => id.toString() === userId) || false;
+    const hasBlocked = targetUser?.blockedUsers?.some((id: any) => id.toString() === currentUserId) || false;
+
+    res.json({ ...user, isFollowing, isFollower, isBlocked, hasBlocked });
   } catch (err) {
     console.error("Get user error:", err);
     res.status(500).json({ error: "Failed to get user" });
@@ -139,6 +230,12 @@ router.post("/:userId/follow", async (req: Request, res: Response): Promise<void
       return;
     }
 
+    // Check if blocked
+    if (currentUser?.blockedUsers?.includes(userId as any) || targetUser?.blockedUsers?.includes(currentUserId as any)) {
+      res.status(403).json({ error: "Cannot follow a blocked user" });
+      return;
+    }
+
     // Check if already following
     if (currentUser?.following?.includes(userId as any)) {
       res.status(400).json({ error: "Already following" });
@@ -183,6 +280,77 @@ router.delete("/:userId/follow", async (req: Request, res: Response): Promise<vo
   } catch (err) {
     console.error("Unfollow error:", err);
     res.status(500).json({ error: "Failed to unfollow user" });
+  }
+});
+
+// Block user
+router.post("/:userId/block", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const currentUserId = (req as any).userId;
+    const { userId } = req.params;
+
+    if (currentUserId === userId) {
+      res.status(400).json({ error: "Cannot block yourself" });
+      return;
+    }
+
+    const currentUser = await User.findById(currentUserId);
+    if (!currentUser) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    // Add to blockedUsers if not already blocked
+    if (!currentUser.blockedUsers?.includes(userId as any)) {
+      await User.findByIdAndUpdate(currentUserId, {
+        $push: { blockedUsers: userId }
+      });
+    }
+
+    // Automatically remove follow/following relationships in both directions
+    if (currentUser.following?.includes(userId as any)) {
+      await User.findByIdAndUpdate(currentUserId, {
+        $pull: { following: userId },
+        $inc: { followingCount: -1 }
+      });
+      await User.findByIdAndUpdate(userId, {
+        $pull: { followers: currentUserId },
+        $inc: { followersCount: -1 }
+      });
+    }
+
+    if (currentUser.followers?.includes(userId as any)) {
+      await User.findByIdAndUpdate(currentUserId, {
+        $pull: { followers: userId },
+        $inc: { followersCount: -1 }
+      });
+      await User.findByIdAndUpdate(userId, {
+        $pull: { following: currentUserId },
+        $inc: { followingCount: -1 }
+      });
+    }
+
+    res.json({ message: "User blocked successfully" });
+  } catch (err) {
+    console.error("Block error:", err);
+    res.status(500).json({ error: "Failed to block user" });
+  }
+});
+
+// Unblock user
+router.delete("/:userId/block", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const currentUserId = (req as any).userId;
+    const { userId } = req.params;
+
+    await User.findByIdAndUpdate(currentUserId, {
+      $pull: { blockedUsers: userId }
+    });
+
+    res.json({ message: "User unblocked successfully" });
+  } catch (err) {
+    console.error("Unblock error:", err);
+    res.status(500).json({ error: "Failed to unblock user" });
   }
 });
 

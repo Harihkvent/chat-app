@@ -7,7 +7,7 @@ import { FiSend, FiPaperclip, FiSmile, FiMoreVertical, FiPhone, FiVideo, FiX, Fi
 import { format } from 'date-fns'
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react'
 import axios from 'axios'
-import { getImageUrl } from '../lib/api'
+import { getImageUrl, getServerBaseUrl } from '../lib/api'
 
 interface ChatWindowProps {
   activeContact: Contact | null
@@ -29,6 +29,8 @@ const ChatWindow = ({ activeContact }: ChatWindowProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const currentUserId = user?._id || (user as any)?.id
 
   useEffect(() => {
     if (!socket) return
@@ -101,7 +103,7 @@ const ChatWindow = ({ activeContact }: ChatWindowProps) => {
       setConversationId(null)
       
       try {
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+        const API_URL = getServerBaseUrl()
         
         // Get or create conversation
         const convResponse = await axios.post(
@@ -131,11 +133,11 @@ const ChatWindow = ({ activeContact }: ChatWindowProps) => {
   }, [activeContact, token])
 
   const handleSendMessage = async () => {
-    if ((!message.trim() && !selectedFile) || !activeContact || !conversationId) return
+    if ((!message.trim() && !selectedFile) || !activeContact || !conversationId || !currentUserId) return
 
     try {
       setUploading(true)
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+      const API_URL = getServerBaseUrl()
       
       if (selectedFile) {
         // Send file
@@ -159,7 +161,7 @@ const ChatWindow = ({ activeContact }: ChatWindowProps) => {
         if (socket && socket.connected) {
           socket.emit('sendMessage', {
             ...response.data,
-            from: user!.id,
+            from: currentUserId,
             to: activeContact._id,
           })
         }
@@ -171,7 +173,7 @@ const ChatWindow = ({ activeContact }: ChatWindowProps) => {
         // Send text message via socket
         const tempTimestamp = new Date()
         const newMessage: Message = {
-          from: user!.id,
+          from: currentUserId,
           to: activeContact._id,
           content: message,
           type: 'text',

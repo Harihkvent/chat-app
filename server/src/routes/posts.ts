@@ -41,40 +41,42 @@ const upload = multer({
   }
 });
 
-// Get feed (posts from followed users)
+// Get feed (posts from followed users + own posts, excluding blocked users)
 router.get("/feed", authenticateToken, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.userId;
-    console.log('📰 [SERVER] GET /api/posts/feed - User ID:', userId);
+    const currentUser = await User.findById(userId);
     
-    const user = await User.findById(userId);
-    
-    if (!user) {
-      console.error('❌ [SERVER] User not found:', userId);
+    if (!currentUser) {
       res.status(404).json({ error: "User not found" });
       return;
     }
 
-    console.log('   User:', user.username, 'Following:', user.following?.length || 0, 'users');
-    const following = user.following || [];
-    console.log('   Searching for posts from users:', [...following, userId]);
+    const following = currentUser.following || [];
+    const blockedByMe = currentUser.blockedUsers || [];
+    
+    // Find users who have blocked current user
+    const usersWhoBlockedMe = await User.find({ blockedUsers: userId }).select("_id");
+    const blockedMeIds = usersWhoBlockedMe.map(u => u._id);
+
+    const blockedSet = new Set([...blockedByMe.map((id: any) => id.toString()), ...blockedMeIds.map((id: any) => id.toString())]);
+
+    // Feed includes followed users + self, excluding any blocked IDs
+    const allowedAuthors = [...following.map((id: any) => id.toString()), userId].filter(
+      (authorId) => !blockedSet.has(authorId)
+    );
     
     const feedPosts = await Post.find({
-      user: { $in: [...following, userId] }
+      user: { $in: allowedAuthors }
     })
       .sort({ createdAt: -1 })
       .limit(50)
       .populate("user", "name username avatar")
       .lean();
-
-    console.log('✅ [SERVER] Found', feedPosts.length, 'posts in feed');
-    feedPosts.forEach((post: any, i: number) => {
-      console.log(`   Post ${i + 1}:`, post._id, 'by', post.user?.username, 'image:', post.imageUrl?.substring(0, 50));
-    });
     
     res.json(feedPosts);
   } catch (error) {
-    console.error("❌ [SERVER] Error fetching feed:", error);
+    console.error("Error fetching feed:", error);
     res.status(500).json({ error: "Failed to fetch feed" });
   }
 });
@@ -82,12 +84,39 @@ router.get("/feed", authenticateToken, async (req: Request, res: Response) => {
 // Get posts by user
 router.get("/user/:userId", authenticateToken, async (req: Request, res: Response) => {
   try {
+    const currentUserId = (req as any).user?.userId;
     const { userId } = req.params;
     
     // Validate userId parameter
     if (!userId || userId === 'undefined' || userId === 'null') {
       res.status(400).json({ error: "Invalid user ID" });
       return;
+    }
+
+    const currentUser = await User.findById(currentUserId);
+    const targetUser = await User.findById(userId);
+
+    if (!targetUser) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    // Check if either user has blocked the other
+    const isBlocked = currentUser?.blockedUsers?.some((id: any) => id.toString() === userId);
+    const hasBlocked = targetUser?.blockedUsers?.some((id: any) => id.toString() === currentUserId);
+
+    if (isBlocked || hasBlocked) {
+      res.json([]);
+      return;
+    }
+
+    // Check private account access (if private, must be following or self)
+    if (targetUser.isPrivate && currentUserId !== userId) {
+      const isFollowing = currentUser?.following?.some((id: any) => id.toString() === userId);
+      if (!isFollowing) {
+        res.json([]);
+        return;
+      }
     }
     
     const posts = await Post.find({ user: userId })

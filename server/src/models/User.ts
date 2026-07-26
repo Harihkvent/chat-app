@@ -16,6 +16,8 @@ const userSchema = new mongoose.Schema({
   lastSeen: { type: Date, default: Date.now },
   followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+  blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+  savedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
   followersCount: { type: Number, default: 0 },
   followingCount: { type: Number, default: 0 },
   postsCount: { type: Number, default: 0 },

@@ -42,7 +42,7 @@ export default function CreateGroupModal({ contacts, onClose, onGroupCreated }: 
 
     setLoading(true);
     try {
-      await api.post("/chats/groups", {
+      await api.post("/api/chats/groups", {
         name: groupName.trim(),
         memberIds: selectedMembers
       });

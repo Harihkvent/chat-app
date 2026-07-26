@@ -16,6 +16,7 @@ const RemoteVideo = ({ peerStream }: { peerStream: RemotePeerStream }) => {
   useEffect(() => {
     if (videoRef.current && peerStream.stream) {
       videoRef.current.srcObject = peerStream.stream
+      videoRef.current.play().catch(err => console.warn('Remote video play error:', err))
     }
   }, [peerStream.stream])
 
@@ -35,10 +36,11 @@ const RemoteAudio = ({ peerStream }: { peerStream: RemotePeerStream }) => {
   useEffect(() => {
     if (audioRef.current && peerStream.stream) {
       audioRef.current.srcObject = peerStream.stream
+      audioRef.current.play().catch(err => console.warn('Remote audio play error:', err))
     }
   }, [peerStream.stream])
 
-  return <audio ref={audioRef} autoPlay />
+  return <audio ref={audioRef} autoPlay playsInline />
 }
 
 const CallModal = () => {
@@ -115,6 +117,7 @@ const CallModal = () => {
               {remoteEntries.map(([peerId, peerStream]) => (
                 <div key={peerId} className="relative w-full h-full bg-gray-800 overflow-hidden">
                   <RemoteVideo peerStream={peerStream} />
+                  <RemoteAudio peerStream={peerStream} />
                   <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
                     {peerStream.name || peerId.slice(0, 8)}
                   </div>

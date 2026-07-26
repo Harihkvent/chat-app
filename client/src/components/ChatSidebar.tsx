@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { getContacts, searchUsers } from '../lib/api'
 import { Contact } from '../pages/ChatPage'
+import CreateGroupModal from './CreateGroupModal'
 import {
   FiSearch,
   FiLogOut,
@@ -25,10 +27,12 @@ const ChatSidebar = ({
   isConnected,
 }: ChatSidebarProps) => {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [contacts, setContacts] = useState<Contact[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<Contact[]>([])
   const [loading, setLoading] = useState(false)
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false)
 
   useEffect(() => {
     loadContacts()
@@ -86,7 +90,7 @@ const ChatSidebar = ({
                 <img
                   src={user.avatar}
                   alt={user.name}
-                  className="w-10 h-10 rounded-full"
+                  className="w-10 h-10 rounded-full object-cover"
                 />
               ) : (
                 getInitials(user?.name || 'U')
@@ -100,10 +104,18 @@ const ChatSidebar = ({
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <button className="p-2 hover:bg-whatsapp-teal rounded-full transition">
+            <button
+              onClick={() => setIsGroupModalOpen(true)}
+              className="p-2 hover:bg-whatsapp-teal rounded-full transition"
+              title="Create Group Chat"
+            >
               <FiUsers size={20} />
             </button>
-            <button className="p-2 hover:bg-whatsapp-teal rounded-full transition">
+            <button
+              onClick={() => navigate('/settings')}
+              className="p-2 hover:bg-whatsapp-teal rounded-full transition"
+              title="Settings"
+            >
               <FiSettings size={20} />
             </button>
             <button
@@ -121,13 +133,21 @@ const ChatSidebar = ({
           <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Search or start new chat"
+            placeholder="Search contacts..."
             className="w-full pl-10 pr-4 py-2 rounded-lg text-gray-800 focus:outline-none"
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
           />
         </div>
       </div>
+
+      {isGroupModalOpen && (
+        <CreateGroupModal
+          contacts={contacts}
+          onClose={() => setIsGroupModalOpen(false)}
+          onGroupCreated={loadContacts}
+        />
+      )}
 
       {/* Contacts List */}
       <div className="flex-1 overflow-y-auto">

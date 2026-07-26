@@ -1,8 +1,10 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import http from "http";
 import { Server as SocketIOServer } from "socket.io";
 import cors from "cors";
-import dotenv from "dotenv";
 import mongoose from "mongoose";
 import path from "path";
 import { createAdapter } from "@socket.io/redis-adapter";
@@ -27,7 +29,6 @@ import {
   getAllCallRooms,
 } from "./store";
 
-dotenv.config();
 const app = express();
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
@@ -118,7 +119,27 @@ io.on("connection", (socket) => {
         });
       }
 
+      // If direct chat, verify block status
+      if (conversation && !conversation.isGroup) {
+        const sender = await User.findById(data.from);
+        const recipient = await User.findById(data.to);
+
+        if (sender?.blockedUsers?.includes(data.to as any) || recipient?.blockedUsers?.includes(data.from as any)) {
+          socket.emit("messageError", { error: "Cannot send message (User is blocked)" });
+          return;
+        }
+      }
+
       if (!conversation) {
+        // Verify block status before creating new conversation
+        const sender = await User.findById(data.from);
+        const recipient = await User.findById(data.to);
+
+        if (sender?.blockedUsers?.includes(data.to as any) || recipient?.blockedUsers?.includes(data.from as any)) {
+          socket.emit("messageError", { error: "Cannot send message (User is blocked)" });
+          return;
+        }
+
         conversation = await Conversation.create({
           participants: [data.from, data.to],
           isGroup: false
@@ -277,9 +298,19 @@ io.on("connection", (socket) => {
     await addToCallRoom(data.roomId, data.from);
     console.log(`📞 Call room ${data.roomId} created by ${data.from} (${data.callType})`);
 
+    const caller = await User.findById(data.from);
+
     // Notify each invited participant
     const offlineUsers: string[] = [];
     for (const userId of data.participants) {
+      const recipient = await User.findById(userId);
+
+      // Check if blocked
+      if (caller?.blockedUsers?.includes(userId as any) || recipient?.blockedUsers?.includes(data.from as any)) {
+        offlineUsers.push(userId);
+        continue;
+      }
+
       const recipientSocketId = await getUserSocket(userId);
       if (recipientSocketId) {
         io.to(recipientSocketId).emit("incomingCall", {
@@ -297,7 +328,7 @@ io.on("connection", (socket) => {
     }
 
     if (offlineUsers.length === data.participants.length) {
-      socket.emit("callUnavailable", { roomId: data.roomId, reason: "All participants are offline" });
+      socket.emit("callUnavailable", { roomId: data.roomId, reason: "Participants unavailable or blocked" });
     }
   });
 

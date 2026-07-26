@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import api, { getImageUrl } from "../lib/api";
+import api, { getImageUrl, getSavedPosts } from "../lib/api";
 import { Settings, Grid, Bookmark, UserPlus, UserCheck, MessageCircle, Heart } from "lucide-react";
 
 interface UserProfile {
@@ -17,6 +17,8 @@ interface UserProfile {
   isPrivate: boolean;
   isFollowing: boolean;
   isFollower: boolean;
+  isBlocked?: boolean;
+  hasBlocked?: boolean;
 }
 
 interface Post {
@@ -32,6 +34,7 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [savedPosts, setSavedPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"posts" | "saved">("posts");
 
@@ -53,6 +56,12 @@ export default function ProfilePage() {
     loadProfile();
     loadPosts();
   }, [userId, currentUser, authLoading]);
+
+  useEffect(() => {
+    if (activeTab === "saved" && isOwnProfile) {
+      loadSavedPosts();
+    }
+  }, [activeTab]);
 
   const loadProfile = async () => {
     try {
@@ -84,6 +93,15 @@ export default function ProfilePage() {
     }
   };
 
+  const loadSavedPosts = async () => {
+    try {
+      const response = await getSavedPosts();
+      setSavedPosts(response.data);
+    } catch (error) {
+      console.error("Error loading saved posts:", error);
+    }
+  };
+
   const handleFollow = async () => {
     if (!profile) return;
     
@@ -93,7 +111,7 @@ export default function ProfilePage() {
         setProfile({
           ...profile,
           isFollowing: false,
-          followersCount: profile.followersCount - 1
+          followersCount: Math.max(0, profile.followersCount - 1)
         });
       } else {
         await api.post(`/api/users/${profile._id}/follow`);
@@ -105,6 +123,30 @@ export default function ProfilePage() {
       }
     } catch (error) {
       console.error("Error following/unfollowing:", error);
+    }
+  };
+
+  const handleBlock = async () => {
+    if (!profile) return;
+    try {
+      if (profile.isBlocked) {
+        await api.delete(`/api/users/${profile._id}/block`);
+        setProfile({
+          ...profile,
+          isBlocked: false,
+        });
+      } else {
+        await api.post(`/api/users/${profile._id}/block`);
+        setProfile({
+          ...profile,
+          isBlocked: true,
+          isFollowing: false,
+          followersCount: Math.max(0, profile.followersCount - (profile.isFollowing ? 1 : 0)),
+        });
+        setPosts([]);
+      }
+    } catch (error) {
+      console.error("Error blocking/unblocking user:", error);
     }
   };
 
@@ -153,29 +195,43 @@ export default function ProfilePage() {
                   </button>
                 ) : (
                   <div className="flex space-x-2">
+                    {!profile.isBlocked && (
+                      <button
+                        onClick={handleFollow}
+                        className={`px-6 py-1.5 rounded-md text-sm font-semibold ${
+                          profile.isFollowing
+                            ? "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600"
+                            : "bg-whatsapp-green text-white hover:bg-whatsapp-teal"
+                        }`}
+                      >
+                        {profile.isFollowing ? (
+                          <span className="flex items-center">
+                            <UserCheck size={16} className="mr-1" /> Following
+                          </span>
+                        ) : (
+                          <span className="flex items-center">
+                            <UserPlus size={16} className="mr-1" /> Follow
+                          </span>
+                        )}
+                      </button>
+                    )}
+                    {!profile.isBlocked && (
+                      <button
+                        onClick={handleMessage}
+                        className="px-6 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-semibold text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      >
+                        Message
+                      </button>
+                    )}
                     <button
-                      onClick={handleFollow}
-                      className={`px-6 py-1.5 rounded-md text-sm font-semibold ${
-                        profile.isFollowing
-                          ? "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600"
-                          : "bg-whatsapp-green text-white hover:bg-whatsapp-teal"
+                      onClick={handleBlock}
+                      className={`px-4 py-1.5 rounded-md text-sm font-semibold ${
+                        profile.isBlocked
+                          ? "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 hover:bg-red-200"
+                          : "border border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                       }`}
                     >
-                      {profile.isFollowing ? (
-                        <span className="flex items-center">
-                          <UserCheck size={16} className="mr-1" /> Following
-                        </span>
-                      ) : (
-                        <span className="flex items-center">
-                          <UserPlus size={16} className="mr-1" /> Follow
-                        </span>
-                      )}
-                    </button>
-                    <button
-                      onClick={handleMessage}
-                      className="px-6 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-semibold text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
-                    >
-                      Message
+                      {profile.isBlocked ? "Unblock" : "Block"}
                     </button>
                   </div>
                 )}
@@ -252,12 +308,12 @@ export default function ProfilePage() {
 
           {/* Posts Grid */}
           <div className="p-4">
-            {posts.length > 0 ? (
+            {((activeTab === "posts" ? posts : savedPosts) || []).length > 0 ? (
               <div className="grid grid-cols-3 gap-1">
-                {posts.map((post) => (
+                {(activeTab === "posts" ? posts : savedPosts).map((post) => (
                   <div
                     key={post._id}
-                    className="aspect-square relative group cursor-pointer"
+                    className="aspect-square relative group cursor-pointer overflow-hidden rounded"
                   >
                     <img
                       src={getImageUrl(post.imageUrl || "https://via.placeholder.com/400")}
@@ -267,11 +323,11 @@ export default function ProfilePage() {
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 flex items-center justify-center space-x-6 opacity-0 group-hover:opacity-100 transition-all">
                       <div className="flex items-center text-white font-semibold">
                         <Heart className="mr-2" size={20} fill="currentColor" />
-                        {post.likesCount}
+                        {post.likesCount || 0}
                       </div>
                       <div className="flex items-center text-white font-semibold">
                         <MessageCircle className="mr-2" size={20} />
-                        {post.commentsCount}
+                        {post.commentsCount || 0}
                       </div>
                     </div>
                   </div>
@@ -279,7 +335,9 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div className="text-center py-12">
-                <p className="text-gray-600 dark:text-gray-400 text-lg">No posts yet</p>
+                <p className="text-gray-600 dark:text-gray-400 text-lg">
+                  {activeTab === "posts" ? "No posts yet" : "No saved posts yet"}
+                </p>
               </div>
             )}
           </div>
